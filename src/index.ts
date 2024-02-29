@@ -10,30 +10,35 @@ type Env = {
 const app = new Hono<{ Bindings: Env }>()
 
 app.get('/', (c) => {
-  console.log(c.env.HOST)
   return c.text('Hello Hono!')
 })
 
 app.post('/:label?', async (c) => {
-  const { label } = c.req.param()
-  const body = await c.req.parseBody()
-  let content = await ex_content(body)
+  const { label } = c.req.param();
+  const body = await c.req.parseBody();
+  const content = await ex_content(body);
 
   try {
-    let key = label ? label : (await md5(content))?.slice(0, 4)
+    let key = label ? label : (await md5(content))?.slice(0, 4);
     if (!key) {
-      return c.status(500)
+      return c.status(500);
+    }
+    const url = constructURL(c.env.HOST, key);
+
+    const existingContent = await c.env.PB.get(key);
+    if (existingContent) {
+      return c.text(`'${key}' already exists at ${url}\n`);
     }
 
-    const url = constructURL(c.env.HOST, key)
-    await c.env.PB.put(key, content)
+    await c.env.PB.put(key, content);
 
-    return c.text(`${url}\n`)
+    return c.text(`url: ${url}\n`);
   } catch (error) {
-    console.error('Error occurred:', error)
-    return c.status(500)
+    console.error('Error occurred:', error);
+    return c.status(500);
   }
-})
+});
+
 
 app.get('/:id', async (c) => {
   const { id } = c.req.param()
@@ -53,7 +58,7 @@ app.get('/:id', async (c) => {
   try {
     const content = await ex_content(body)
     await c.env.PB.put(id, content)
-    return c.text(`${c.req.url} has been updated.`)
+    return c.text(`${c.req.url} has been updated.\n`)
   } catch (error) {
     console.error('Error occurred:', error)
     return c.status(500)
@@ -62,7 +67,7 @@ app.get('/:id', async (c) => {
   const { id } = c.req.param()
   try {
     await c.env.PB.delete(id)
-    return c.text('OK')
+    return c.text('deleted\n')
   } catch (error) {
     console.error('Error occurred:', error)
     return c.status(500)
