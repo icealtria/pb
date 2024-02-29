@@ -1,12 +1,12 @@
 name = "pb"
 compatibility_date = "2023-12-01"
 
-# [vars]
-# MY_VARIABLE = "production_value"
+[vars]
+HOST = "pb.icealtria.workers.dev"
 
-# [[kv_namespaces]]
-# binding = "MY_KV_NAMESPACE"
-# id = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+[[kv_namespaces]]
+binding = "PB"
+id = "91b78f5046ea4779becfe4f6d80dc121"
 
 # [[r2_buckets]]
 # binding = "MY_BUCKET"
