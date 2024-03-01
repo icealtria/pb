@@ -2,6 +2,27 @@ import { Hono } from 'hono/quick'
 import { BodyData } from 'hono/utils/body'
 import { md5 } from 'hono/utils/crypto'
 
+const USAGE = `# usage
+
+$ echo HAHA | curl -F c=@- https://p.hoyo.win           
+url: https://p.hoyo.win/635e
+
+$ curl https://p.hoyo.win/635e
+HAHA
+
+$ echo HAHA | curl -F c=@- https://p.hoyo.win           
+
+'635e' already exists at https://p.hoyo.win/635e
+
+$ echo HAHAHA | curl -X PUT -F c=@- https://p.hoyo.win/635e 
+https://p.hoyo.win/635e has been updated
+
+$ curl https://p.hoyo.win/635e
+HAHAHA
+
+$ curl -X DELETE https://p.hoyo.win/635e
+deleted`
+
 type Env = {
   HOST: string
   PB: KVNamespace
@@ -10,7 +31,7 @@ type Env = {
 const app = new Hono<{ Bindings: Env }>()
 
 app.get('/', (c) => {
-  return c.text('Hello Hono!')
+  return c.text(USAGE)
 })
 
 app.post('/:label?', async (c) => {
@@ -63,7 +84,7 @@ app.get('/:id', async (c) => {
       return c.text('Content is empty.', 400);
     }
     await c.env.PB.put(id, content)
-    return c.text(`${c.req.url} has been updated.\n`)
+    return c.text(`${c.req.url} has been updated\n`)
   } catch (error) {
     console.error('Error occurred:', error)
     return c.status(500)
