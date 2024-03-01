@@ -21,27 +21,41 @@ $ curl https://p.hoyo.win/635e
 HAHAHA
 
 $ curl -X DELETE https://p.hoyo.win/635e
-deleted`
+deleted
+`
 
 type Env = {
   HOST: string
   PB: KVNamespace
 }
 
-const app = new Hono<{ Bindings: Env }>()
+type Variables = {
+  content: string
+}
+
+const app = new Hono<{ Bindings: Env, Variables: Variables }>()
 
 app.get('/', (c) => {
   return c.text(USAGE)
 })
 
+app.use('/:id?', async (c, next) => {
+  if (c.req.method === 'POST' || c.req.method === "PUT") {
+    const body = await c.req.parseBody()
+    const content = await ex_content(body)
+    if (!content) {
+      return c.text('Content is empty.', 400);
+    }
+    c.set('content', content);
+  }
+  await next()
+})
+
+
 app.post('/:label?', async (c) => {
   const { label } = c.req.param();
-  const body = await c.req.parseBody();
-  const content = await ex_content(body);
-  if (!content) {
-    return c.text('Content is empty.', 400);
-  }
   try {
+    const content = c.get('content')
     let key = label ? label : (await md5(content))?.slice(0, 4);
     if (!key) {
       return c.status(500);
@@ -77,12 +91,8 @@ app.get('/:id', async (c) => {
   }
 }).put(async (c) => {
   const { id } = c.req.param()
-  const body = await c.req.parseBody()
   try {
-    const content = await ex_content(body)
-    if (!content) {
-      return c.text('Content is empty.', 400);
-    }
+    const content = c.get('content')
     await c.env.PB.put(id, content)
     return c.text(`${c.req.url} has been updated\n`)
   } catch (error) {
