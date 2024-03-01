@@ -17,7 +17,9 @@ app.post('/:label?', async (c) => {
   const { label } = c.req.param();
   const body = await c.req.parseBody();
   const content = await ex_content(body);
-
+  if (!content) {
+    return c.text('Content is empty.', 400);
+  }
   try {
     let key = label ? label : (await md5(content))?.slice(0, 4);
     if (!key) {
@@ -57,6 +59,9 @@ app.get('/:id', async (c) => {
   const body = await c.req.parseBody()
   try {
     const content = await ex_content(body)
+    if (!content) {
+      return c.text('Content is empty.', 400);
+    }
     await c.env.PB.put(id, content)
     return c.text(`${c.req.url} has been updated.\n`)
   } catch (error) {
