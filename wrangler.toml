@@ -2,7 +2,7 @@ name = "pb"
 compatibility_date = "2023-12-01"
 
 [vars]
-HOST = "pb.icealtria.workers.dev"
+HOST = "p.hoyo.win"
 
 [[kv_namespaces]]
 binding = "PB"
