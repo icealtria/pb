@@ -70,6 +70,7 @@ app.get('/:id', async (c) => {
   return content ? c.text(content) : c.notFound();
 }).put(async (c) => {
   const { id } = c.req.param();
+  if (!(await c.env.PB.get(id))) { return c.notFound() };
   await c.env.PB.put(id, c.get('content'));
   return c.text(`${c.req.url} has been updated\n`);
 }).delete(async (c) => {
