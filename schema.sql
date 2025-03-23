@@ -1,0 +1,10 @@
+CREATE TABLE IF NOT EXISTS pastes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  slug TEXT NOT NULL UNIQUE,
+  content TEXT NOT NULL,
+  secret TEXT NOT NULL,
+  expires_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_pastes_created_at ON pastes (created_at);

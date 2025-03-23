@@ -2,17 +2,12 @@ name = "pb"
 compatibility_date = "2023-12-01"
 
 [vars]
-HOST = "p.hoyo.win"
+HOST = "p.kururin.cc"
 
-[[kv_namespaces]]
-binding = "PB"
-id = "91b78f5046ea4779becfe4f6d80dc121"
+[[d1_databases]]
+binding = "DB"
+database_name = "pb"
+database_id = "5aebacbf-9665-4f02-9558-8116ae8d8a36"
 
-# [[r2_buckets]]
-# binding = "MY_BUCKET"
-# bucket_name = "my-bucket"
-
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "my-database"
-# database_id = ""
+[env.dev.triggers]
+crons = ["0 0 */1 * *"]
