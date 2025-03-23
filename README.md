@@ -14,22 +14,16 @@ pnpm run deploy
 # uasge
 
 ```
-$ echo HAHA | curl -F c=@- https://p.hoyo.win           
-url: https://p.hoyo.win/635e
+$ echo HAHA | curl -F c=@- https://p.kururin.cc           
+url: https://p.kururin.cc/xxxx
+secret: abcdef123456
 
-$ curl https://p.hoyo.win/635e
+$ curl https://p.kururin.cc/xxxx
 HAHA
 
-$ echo HAHA | curl -F c=@- https://p.hoyo.win           
+$ echo NEW | curl -X PUT -F c=@- -F secret=abcdef123456 https://p.kururin.cc/xxxx
+updated
 
-'635e' already exists at https://p.hoyo.win/635e
-
-$ echo HAHAHA | curl -X PUT -F c=@- https://p.hoyo.win/635e 
-https://p.hoyo.win/635e has been updated.
-
-$ curl https://p.hoyo.win/635e
-HAHAHA
-
-$ curl -X DELETE https://p.hoyo.win/635e
+$ curl -X DELETE -F secret=abcdef123456 https://p.kururin.cc/xxxx
 deleted
 ```
