@@ -20,5 +20,4 @@ export const formSchema = z.object({
     z.instanceof(File)
   ]),
   ttl: z.string().optional(),
-  p: z.string().optional()
 })

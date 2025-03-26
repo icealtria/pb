@@ -12,7 +12,7 @@ export const formVaild = async (c: Context, next: Next) => {
         const url = new URL(c.req.url)
         const hostname = url.port ? `${url.hostname}:${url.port}` : url.hostname;
         c.set('hostname', hostname)
-        
+
         let content: string | Uint8Array
         let contentType: string
 
