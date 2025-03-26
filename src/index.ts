@@ -1,5 +1,6 @@
 import { Hono } from 'hono/quick'
 import { customAlphabet } from 'nanoid'
+import { dataSchema } from './schema'
 
 const USAGE = `# usage
 $ echo HAHA | curl -F c=@- https://p.kururin.cc           
@@ -22,7 +23,8 @@ type Env = {
 }
 
 type Variables = {
-  content: string
+  content: string | Uint8Array
+  contentType: string
   secret: string
   ttl?: number
 }
@@ -33,14 +35,28 @@ function generateSlug(length = 6): string {
   return customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', length)()
 }
 
-app.get('/', (c) => c.text(USAGE))
+app.get('/', (c) => c.html(`<pre>${USAGE}</pre>`))
 
 app.use('/:id?', async (c, next) => {
   if (['POST', 'PUT'].includes(c.req.method)) {
     const { c: body, secret, ttl } = await c.req.parseBody()
-    const content = typeof body === 'string' ? body : body instanceof File ? await body.text() : ''
-    if (!content) return c.text('Content is empty.', 400)
+    let content: string | Uint8Array
+    let contentType: string
+
+    if (body instanceof File) {
+      content = new Uint8Array(await body.arrayBuffer())
+      contentType = body.type || 'application/octet-stream'
+    } else if (typeof body === 'string') {
+      content = body
+      contentType = 'text/plain'
+    } else {
+      return c.text('Invalid content format.', 400)
+    }
+
+    if (!content.length) return c.text('Content is empty.', 400)
+    if (content.length > 2 * 1024 * 1024) return c.text('Content too large. Maximum size is 2MB.', 413)
     c.set('content', content)
+    c.set('contentType', contentType)
     if (typeof secret === 'string') c.set('secret', secret)
     if (typeof ttl === 'string' && !isNaN(Number(ttl))) c.set('ttl', Number(ttl))
   }
@@ -50,6 +66,7 @@ app.use('/:id?', async (c, next) => {
 app.post('/:label?', async (c) => {
   const label = c.req.param('label')
   const content = c.get('content')
+  const contentType = c.get('contentType')
   const db = c.env.DB
 
   const secret = c.get('secret') || generateSlug(8)
@@ -62,8 +79,8 @@ app.post('/:label?', async (c) => {
   while (tries < 5) {
     try {
       await db.prepare(`
-        INSERT INTO pastes (slug, content, secret, expires_at) VALUES (?, ?, ?, ?)
-      `).bind(slug, content, secret, expiresAt).run()
+        INSERT INTO pastes (slug, content, content_type, secret, expires_at) VALUES (?, ?, ?, ?, ?)
+      `).bind(slug, content, contentType, secret, expiresAt).run()
 
       return c.text(`url: https://${c.env.HOST}/${slug}\nsecret: ${secret}\n`)
     } catch (err: any) {
@@ -83,23 +100,36 @@ app.post('/:label?', async (c) => {
 })
 
 app.get('/:id', async (c) => {
-  const row = await c.env.DB.prepare('SELECT content, expires_at FROM pastes WHERE slug = ?').bind(c.req.param('id')).first()
-  if (!row) return c.notFound()
-  if (new Date(row.expires_at as string) < new Date()) {
+  const row = await c.env.DB.prepare('SELECT content, content_type, expires_at FROM pastes WHERE slug = ?').bind(c.req.param('id')).first()
+  const parsed = dataSchema.safeParse(row)
+  if (!parsed.success) {
+    console.error(parsed.error)
+    return c.text('Internal Server Error\n', 500)
+  }
+
+  const data = parsed.data
+
+  if (data.expires_at < new Date()) {
     await c.env.DB.prepare('DELETE FROM pastes WHERE slug = ?').bind(c.req.param('id')).run()
     return c.notFound()
   }
-  return c.text(row.content as string)
+
+  c.header('Content-Type', data.content_type)
+  if (data.content_type.startsWith('text/')) {
+    return c.body(data.content)
+  }
+  return c.body((data.content))
 })
   .put('/:id', async (c) => {
     const { id } = c.req.param()
     const secret = c.get('secret')
     const content = c.get('content')
+    const contentType = c.get('contentType')
     const row = await c.env.DB.prepare('SELECT secret FROM pastes WHERE slug = ?').bind(id).first()
     if (!row) return c.notFound()
     if (row.secret !== secret) return c.text('Invalid secret\n', 403)
 
-    await c.env.DB.prepare('UPDATE pastes SET content = ? WHERE slug = ?').bind(content, id).run()
+    await c.env.DB.prepare('UPDATE pastes SET content = ?, content_type = ? WHERE slug = ?').bind(content, contentType, id).run()
     return c.text('updated\n')
   })
   .delete('/:id', async (c) => {
