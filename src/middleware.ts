@@ -9,6 +9,10 @@ export const formVaild = async (c: Context, next: Next) => {
         if (!parsed.success) {
             return c.text('Invalid request format.', 400)
         }
+        const url = new URL(c.req.url)
+        const hostname = url.port ? `${url.hostname}:${url.port}` : url.hostname;
+        c.set('hostname', hostname)
+        
         let content: string | Uint8Array
         let contentType: string
 

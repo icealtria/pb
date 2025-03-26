@@ -3,21 +3,7 @@ import { customAlphabet } from 'nanoid'
 import { dataSchema } from './schema'
 import { formVaild } from './middleware'
 import { highlight } from './highlight'
-
-const USAGE = `# usage
-$ echo HAHA | curl -F c=@- https://p.kururin.cc           
-url: https://p.kururin.cc/xxxx
-secret: abcdef123456
-
-$ curl https://p.kururin.cc/xxxx
-HAHA
-
-$ echo NEW | curl -X PUT -F c=@- -F secret=abcdef123456 https://p.kururin.cc/xxxx
-updated
-
-$ curl -X DELETE -F secret=abcdef123456 https://p.kururin.cc/xxxx
-deleted
-`
+import home from './home'
 
 type Env = {
   HOST: string
@@ -27,6 +13,7 @@ type Env = {
 type Variables = {
   content: string | Uint8Array
   contentType: string
+  hostname: string
   ttl?: number
 }
 
@@ -36,21 +23,29 @@ function generateSlug(length = 6): string {
   return customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', length)()
 }
 
-app.get('/', (c) => c.html(`<pre>${USAGE}</pre>`))
+app.route('/', home)
 
 app.use('/:id?', formVaild)
 
 app.post('/:label?', async (c) => {
-  const url = new URL(c.req.url)
-  const hostname = url.port ? `${url.hostname}:${url.port}` : url.hostname;
   const label = c.req.param('label')
+  
+  if (label) {
+    if (!label.startsWith('@') && !label.startsWith('~')) {
+      return c.text('Invalid label: must start with @ or ~\n', 400)
+    }
+    if (label.length !== 5) {
+      return c.text('Invalid label: must be exactly 5 characters long (including @ or ~)\n', 400)
+    }
+  }
 
+  const hostname = c.get('hostname')
   const content = c.get('content')
   const contentType = c.get('contentType')
   const db = c.env.DB
 
   const ttl = c.get('ttl') ?? 60 * 60 * 24 * 7
-  const expiresAt = new Date(Date.now() + ttl * 1000).toISOString()
+  const sunset = new Date(Date.now() + ttl * 1000).toISOString()
 
   let slug = label || generateSlug()
   let tries = 0
@@ -60,9 +55,13 @@ app.post('/:label?', async (c) => {
       const id = generateSlug(13);
       await db.prepare(`
         INSERT INTO pastes (id, slug, content, content_type, expires_at) VALUES (?, ?, ?, ?, ?)
-      `).bind(id, slug, content, contentType, expiresAt).run()
+      `).bind(id, slug, content, contentType, sunset).run()
 
-      return c.text(`url: https://${hostname}/${slug}\nid: ${id}\nexpires_at: ${expiresAt}\n`)
+      if (c.req.query('u') === '1') {
+        return c.text(`url: https://${hostname}/${slug}`)
+      }
+
+      return c.text(`url: https://${hostname}/${slug}\nid: ${id}\nsunset: ${sunset}\n`)
     } catch (err: any) {
       if (err.message.includes('UNIQUE constraint failed')) {
         if (label) {
@@ -115,7 +114,7 @@ app.get('/:id/:hl?', async (c) => {
     if (!row) return c.notFound()
 
     await c.env.DB.prepare('UPDATE pastes SET content = ?, content_type = ? WHERE id = ?').bind(content, contentType, id).run()
-    return c.text('updated\n')
+    return c.text(`${c.get('hostname')}/${row.slug} updated\n`)
   })
   .delete('/:id', async (c) => {
     const { id } = c.req.param()
