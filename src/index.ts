@@ -1,6 +1,7 @@
 import { Hono } from 'hono/quick'
 import { customAlphabet } from 'nanoid'
 import { dataSchema } from './schema'
+import { formVaild } from './middleware'
 
 const USAGE = `# usage
 $ echo HAHA | curl -F c=@- https://p.kururin.cc           
@@ -25,7 +26,6 @@ type Env = {
 type Variables = {
   content: string | Uint8Array
   contentType: string
-  secret: string
   ttl?: number
 }
 
@@ -37,39 +37,17 @@ function generateSlug(length = 6): string {
 
 app.get('/', (c) => c.html(`<pre>${USAGE}</pre>`))
 
-app.use('/:id?', async (c, next) => {
-  if (['POST', 'PUT'].includes(c.req.method)) {
-    const { c: body, secret, ttl } = await c.req.parseBody()
-    let content: string | Uint8Array
-    let contentType: string
-
-    if (body instanceof File) {
-      content = new Uint8Array(await body.arrayBuffer())
-      contentType = body.type || 'application/octet-stream'
-    } else if (typeof body === 'string') {
-      content = body
-      contentType = 'text/plain'
-    } else {
-      return c.text('Invalid content format.', 400)
-    }
-
-    if (!content.length) return c.text('Content is empty.', 400)
-    if (content.length > 2 * 1024 * 1024) return c.text('Content too large. Maximum size is 2MB.', 413)
-    c.set('content', content)
-    c.set('contentType', contentType)
-    if (typeof secret === 'string') c.set('secret', secret)
-    if (typeof ttl === 'string' && !isNaN(Number(ttl))) c.set('ttl', Number(ttl))
-  }
-  await next()
-})
+app.use('/:id?', formVaild)
 
 app.post('/:label?', async (c) => {
+  const url = new URL(c.req.url)
+  const hostname = url.port ? `${url.hostname}:${url.port}` : url.hostname;
   const label = c.req.param('label')
+
   const content = c.get('content')
   const contentType = c.get('contentType')
   const db = c.env.DB
 
-  const secret = c.get('secret') || generateSlug(8)
   const ttl = c.get('ttl') ?? 60 * 60 * 24 * 7
   const expiresAt = new Date(Date.now() + ttl * 1000).toISOString()
 
@@ -78,29 +56,31 @@ app.post('/:label?', async (c) => {
 
   while (tries < 5) {
     try {
+      const id = generateSlug(13);
       await db.prepare(`
-        INSERT INTO pastes (slug, content, content_type, secret, expires_at) VALUES (?, ?, ?, ?, ?)
-      `).bind(slug, content, contentType, secret, expiresAt).run()
+        INSERT INTO pastes (id, slug, content, content_type, expires_at) VALUES (?, ?, ?, ?, ?)
+      `).bind(id, slug, content, contentType, expiresAt).run()
 
-      return c.text(`url: https://${c.env.HOST}/${slug}\nsecret: ${secret}\n`)
+      return c.text(`url: https://${hostname}/${slug}\nid: ${id}\nexpires_at: ${expiresAt}\n`)
     } catch (err: any) {
       if (err.message.includes('UNIQUE constraint failed')) {
         if (label) {
-          return c.text(`'${slug}' already exists at https://${c.env.HOST}/${slug}\n`)
+          return c.text(`'${slug}' already exists at https://${hostname}/${slug}\n`)
         }
         slug = generateSlug()
         tries++
         continue
       }
+      console.error(err)
       return c.text('Internal Server Error\n', 500)
     }
   }
-
   return c.text('Failed to generate unique slug\n', 500)
 })
 
 app.get('/:id', async (c) => {
   const row = await c.env.DB.prepare('SELECT content, content_type, expires_at FROM pastes WHERE slug = ?').bind(c.req.param('id')).first()
+  if (!row) return c.notFound()
   const parsed = dataSchema.safeParse(row)
   if (!parsed.success) {
     console.error(parsed.error)
@@ -122,24 +102,19 @@ app.get('/:id', async (c) => {
 })
   .put('/:id', async (c) => {
     const { id } = c.req.param()
-    const secret = c.get('secret')
     const content = c.get('content')
     const contentType = c.get('contentType')
-    const row = await c.env.DB.prepare('SELECT secret FROM pastes WHERE slug = ?').bind(id).first()
+    const row = await c.env.DB.prepare('SELECT * FROM pastes WHERE id = ?').bind(id).first()
     if (!row) return c.notFound()
-    if (row.secret !== secret) return c.text('Invalid secret\n', 403)
 
-    await c.env.DB.prepare('UPDATE pastes SET content = ?, content_type = ? WHERE slug = ?').bind(content, contentType, id).run()
+    await c.env.DB.prepare('UPDATE pastes SET content = ?, content_type = ? WHERE id = ?').bind(content, contentType, id).run()
     return c.text('updated\n')
   })
   .delete('/:id', async (c) => {
     const { id } = c.req.param()
-    const { secret } = await c.req.parseBody()
-    if (typeof secret !== 'string') return c.text('Missing secret\n', 400)
-    const row = await c.env.DB.prepare('SELECT secret FROM pastes WHERE slug = ?').bind(id).first()
+    const row = await c.env.DB.prepare('SELECT * FROM pastes WHERE id = ?').bind(id).first()
     if (!row) return c.notFound()
-    if (row.secret !== secret) return c.text('Invalid secret\n', 403)
-    await c.env.DB.prepare('DELETE FROM pastes WHERE slug = ?').bind(id).run()
+    await c.env.DB.prepare('DELETE FROM pastes WHERE id = ?').bind(id).run()
     return c.text('deleted\n')
   })
 
