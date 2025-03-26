@@ -2,6 +2,7 @@ import { Hono } from 'hono/quick'
 import { customAlphabet } from 'nanoid'
 import { dataSchema } from './schema'
 import { formVaild } from './middleware'
+import hljs from 'highlight.js'
 
 const USAGE = `# usage
 $ echo HAHA | curl -F c=@- https://p.kururin.cc           
@@ -78,7 +79,7 @@ app.post('/:label?', async (c) => {
   return c.text('Failed to generate unique slug\n', 500)
 })
 
-app.get('/:id', async (c) => {
+app.get('/:id/:hl?', async (c) => {
   const row = await c.env.DB.prepare('SELECT content, content_type, expires_at FROM pastes WHERE slug = ?').bind(c.req.param('id')).first()
   if (!row) return c.notFound()
   const parsed = dataSchema.safeParse(row)
@@ -96,7 +97,37 @@ app.get('/:id', async (c) => {
 
   c.header('Content-Type', data.content_type)
   if (data.content_type.startsWith('text/')) {
-    return c.body(data.content)
+    const hl = c.req.param('hl')
+    if (data.content_type.startsWith('text/')) {
+      const hl = c.req.param('hl')
+      if (hl) {
+        const highlighted = highlightCodeWithLines(data.content, hl)
+        return c.html(`<body class="hljs">
+          ${highlighted}
+          <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+          <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap" rel="stylesheet">
+          <style>code { font-family: 'JetBrains Mono', monospace; }</style>
+          </body>
+          <style>
+          .line-number {
+      display: inline-block;
+      width: 2em;
+      text-align: right;
+      color: gray;
+      margin-right: 1em;
+      user-select: none;
+      text-decoration: none;
+  }
+      .line:target {
+      background-color: rgba(255, 223, 88, 0.3);
+      display: inline-block;
+  }
+          </style>`
+
+        )
+      }
+    }
+    return c.body((data.content))
   }
   return c.body((data.content))
 })
@@ -117,6 +148,18 @@ app.get('/:id', async (c) => {
     await c.env.DB.prepare('DELETE FROM pastes WHERE id = ?').bind(id).run()
     return c.text('deleted\n')
   })
+
+
+function highlightCodeWithLines(code: string, language: string) {
+  const validLanguage = hljs.getLanguage(language) ? language : 'plaintext';
+  const highlighted = hljs.highlight(code, { language: validLanguage }).value;
+  console.log(highlighted)
+  const lines = highlighted.split(/\n/).map((line, i) =>
+    `<a class="line-number" href="#L-${i + 1}">${i + 1}</a><span class="line" id="L-${i + 1}">${line}</span>`
+  ).join('\n');
+
+  return `<pre><code class="hljs">${lines}</code></pre>`;
+}
 
 export const scheduled: ExportedHandlerScheduledHandler<Env> = async (event, env, ctx) => {
   await env.DB.prepare("DELETE FROM pastes WHERE expires_at IS NOT NULL AND datetime(expires_at) <= datetime('now')").run();
