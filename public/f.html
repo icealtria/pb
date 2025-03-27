@@ -22,6 +22,7 @@
                     "",
                 );
                 const [pasteId, setPasteId] = useState("");
+                const [file, setFile] = useState(null);
 
                 const handleLoad = async () => {
                     if (!pasteShort) {
@@ -114,7 +115,20 @@
 
                     try {
                         const formData = new FormData();
-                        formData.append("c", content);
+
+                        // If file is selected, use it instead of textarea content
+                        if (file) {
+                            // Check file size (2MB limit)
+                            if (file.size > 2 * 1024 * 1024) {
+                                throw new Error(
+                                    "File size exceeds 2MB limit",
+                                );
+                            }
+                            formData.append("c", file);
+                        } else {
+                            formData.append("c", content);
+                        }
+
                         if (sunset) {
                             formData.append("sunset", sunset);
                         }
@@ -134,10 +148,18 @@
                         }
                         const data = await response.text();
                         const lines = data.split("\n");
+                        const url = lines[0].split(": ")[1];
+                        const id = lines[1].split(": ")[1];
+                        const sunsetTime = lines[2].split(": ")[1];
+
+                        // Update the input fields with the new paste information
+                        setPasteShort(url.split("/").pop());
+                        setPasteId(id);
+
                         setResult({
-                            url: lines[0].split(": ")[1],
-                            id: lines[1].split(": ")[1],
-                            sunset: lines[2].split(": ")[1],
+                            url: url,
+                            id: id,
+                            sunset: sunsetTime,
                         });
                     } catch (err) {
                         setError(err.message);
@@ -206,9 +228,33 @@
                                     setContent(e.target.value),
                                 placeholder:
                                     "Enter your text here...",
-                                required: true,
+                                required: !file, // Only required if no file is selected
                                 rows: 10,
                             }),
+                        ]),
+                        h("div", { className: "form-group" }, [
+                            h(
+                                "label",
+                                null,
+                                "Or upload a file (max 2MB): ",
+                            ),
+                            h("input", {
+                                type: "file",
+                                onChange: (e) => {
+                                    const selectedFile =
+                                        e.target.files[0];
+                                    setFile(
+                                        selectedFile || null,
+                                    );
+                                },
+                                className: "file-input",
+                            }),
+                            file &&
+                            h(
+                                "p",
+                                { className: "file-name" },
+                                `Selected file: ${file.name}`,
+                            ),
                         ]),
                         h("div", { className: "form-group" }, [
                             h("label", null, "Expires in: "),
@@ -261,7 +307,7 @@
                                     "URL: ",
                                     h(
                                         "a",
-                                        { href: result.url },
+                                        { href: result.url, target: "_blank" },
                                         result.url,
                                     ),
                                 ]),

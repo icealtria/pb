@@ -7,12 +7,13 @@ const Documentation: FC<{ url: string }> = (props: {
   <div className="container">
     <h1>Pastebin Documentation</h1>
 
-    <section className="important-notices">
-      <h2>Important Notices</h2>
+    <section>
+      <h2>Notices</h2>
       <ul>
         <li>Pastes are automatically deleted after 7 days by default</li>
         <li>Maximum size: 2MB (due to D1 limit)</li>
         <li>All data may be erased without notifications</li>
+        <li>A <a href={`/f`}>HTML form</a> is also provided for convenience paste and file-uploads from web browsers.</li>
       </ul>
     </section>
 
