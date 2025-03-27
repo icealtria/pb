@@ -131,8 +131,8 @@ app.get("/:id/:hl?", async (c) => {
 
     try {
       const service = new PasteService(c.env.DB);
-      await service.updatePaste(id, content, contentType);
-      return c.text(`${c.get("addr")}/${id} updated\n`);
+      const { slug } = await service.updatePaste(id, content, contentType);
+      return c.text(`${c.get("addr")}/${slug} updated\n`);
     } catch (err) {
       if (err instanceof Error && err.message === "Paste not found") {
         return c.notFound();

@@ -9,7 +9,7 @@ export interface PasteData {
 }
 
 export class PasteService {
-  constructor(private db: D1Database) {}
+  constructor(private db: D1Database) { }
 
   private generateSlug(length = 6): string {
     return customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", length)();
@@ -98,7 +98,7 @@ export class PasteService {
     id: string,
     content: string | Uint8Array,
     contentType: string,
-  ): Promise<void> {
+  ): Promise<{ slug: string }> {
     const result = await this.db
       .prepare(
         "UPDATE pastes SET content = ?, content_type = ? WHERE id = ?",
@@ -109,6 +109,19 @@ export class PasteService {
     if (!result.meta.changes) {
       throw new Error("Paste not found");
     }
+
+    const updated = await this.db
+      .prepare(
+        "SELECT slug FROM pastes WHERE id = ?",
+      )
+      .bind(id)
+      .first();
+
+    if (!updated) {
+      throw new Error("Failed to fetch updated paste");
+    }
+
+    return updated as { slug: string };
   }
 
   async deletePaste(id: string): Promise<void> {
