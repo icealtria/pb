@@ -1,7 +1,12 @@
+Drop TABLE IF EXISTS pastes;
+
 CREATE TABLE IF NOT EXISTS pastes (
-  slug TEXT primary key,
-  content TEXT NOT NULL,
-  secret TEXT NOT NULL,
+  id TEXT PRIMARY KEY,
+  slug TEXT UNIQUE NOT NULL,
+  content BLOB NOT NULL,
+  content_type TEXT NOT NULL,
   expires_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS slug_idx ON pastes (slug);

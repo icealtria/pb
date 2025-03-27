@@ -1,123 +1,172 @@
-import { Hono } from 'hono/quick'
-import { customAlphabet } from 'nanoid'
-
-const USAGE = `# usage
-$ echo HAHA | curl -F c=@- https://p.kururin.cc           
-url: https://p.kururin.cc/xxxx
-secret: abcdef123456
-
-$ curl https://p.kururin.cc/xxxx
-HAHA
-
-$ echo NEW | curl -X PUT -F c=@- -F secret=abcdef123456 https://p.kururin.cc/xxxx
-updated
-
-$ curl -X DELETE -F secret=abcdef123456 https://p.kururin.cc/xxxx
-deleted
-`
+import { Hono } from "hono/quick";
+import { dataSchema } from "./schema";
+import { formValid } from "./formValid";
+import { highlight } from "./highlight";
+import home from "./home";
+import { PasteService } from "./service";
 
 type Env = {
-  HOST: string
-  DB: D1Database
-}
+  HOST: string;
+  DB: D1Database;
+};
 
 type Variables = {
-  content: string
-  secret: string
-  ttl?: number
-}
+  content: string | Uint8Array;
+  contentType: string;
+  addr: string;
+  sunset?: number;
+};
 
-const app = new Hono<{ Bindings: Env; Variables: Variables }>()
+const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
-function generateSlug(length = 6): string {
-  return customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', length)()
-}
+app.route("/", home);
 
-app.get('/', (c) => c.text(USAGE))
+app.use("/:id?", formValid);
 
-app.use('/:id?', async (c, next) => {
-  if (['POST', 'PUT'].includes(c.req.method)) {
-    const { c: body, secret, ttl } = await c.req.parseBody()
-    const content = typeof body === 'string' ? body : body instanceof File ? await body.text() : ''
-    if (!content) return c.text('Content is empty.', 400)
-    c.set('content', content)
-    if (typeof secret === 'string') c.set('secret', secret)
-    if (typeof ttl === 'string' && !isNaN(Number(ttl))) c.set('ttl', Number(ttl))
+app.post("/u", async (c) => {
+  const content = c.get("content");
+  const addr = c.get("addr");
+  const ttl = c.get("sunset");
+
+  if (typeof content !== "string") {
+    return c.text("Invalid content format: must be a string\n", 400);
   }
-  await next()
-})
 
-app.post('/:label?', async (c) => {
-  const label = c.req.param('label')
-  const content = c.get('content')
-  const db = c.env.DB
+  try {
+    const url = new URL(content);
+    const service = new PasteService(c.env.DB);
+    const result = await service.createUrlPaste(url.origin, ttl);
+    return c.text(
+      `url: ${addr}/${result.slug}\nid: ${result.id}\nsunset: ${result.sunset}\n`,
+    );
+  } catch (err: any) {
+    if (err.message.includes("Invalid URL string.")) {
+      return c.text("Invalid content format: must be a url\n", 400);
+    }
+    console.error(err);
+    return c.text("Internal Server Error\n", 500);
+  }
+});
 
-  const secret = c.get('secret') || generateSlug(8)
-  const ttl = c.get('ttl') ?? 60 * 60 * 24 * 7
-  const expiresAt = new Date(Date.now() + ttl * 1000).toISOString()
+app.post("/:label?", async (c) => {
+  const label = c.req.param("label");
 
-  let slug = label || generateSlug()
-  let tries = 0
-
-  while (tries < 5) {
-    try {
-      await db.prepare(`
-        INSERT INTO pastes (slug, content, secret, expires_at) VALUES (?, ?, ?, ?)
-      `).bind(slug, content, secret, expiresAt).run()
-
-      return c.text(`url: https://${c.env.HOST}/${slug}\nsecret: ${secret}\n`)
-    } catch (err: any) {
-      if (err.message.includes('UNIQUE constraint failed')) {
-        if (label) {
-          return c.text(`'${slug}' already exists at https://${c.env.HOST}/${slug}\n`)
-        }
-        slug = generateSlug()
-        tries++
-        continue
-      }
-      return c.text('Internal Server Error\n', 500)
+  if (label) {
+    if (!label.startsWith("@") && !label.startsWith("~")) {
+      return c.text("Invalid label: must start with @ or ~\n", 400);
+    }
+    if (label.length < 2) {
+      return c.text(
+        "Invalid label: must be at least 2 characters (including @ or ~)\n",
+        400,
+      );
     }
   }
 
-  return c.text('Failed to generate unique slug\n', 500)
-})
+  const addr = c.get("addr");
+  const content = c.get("content");
+  const contentType = c.get("contentType");
+  const ttl = c.get("sunset");
 
-app.get('/:id', async (c) => {
-  const row = await c.env.DB.prepare('SELECT content, expires_at FROM pastes WHERE slug = ?').bind(c.req.param('id')).first()
-  if (!row) return c.notFound()
-  if (new Date(row.expires_at as string) < new Date()) {
-    await c.env.DB.prepare('DELETE FROM pastes WHERE slug = ?').bind(c.req.param('id')).run()
-    return c.notFound()
+  try {
+    const service = new PasteService(c.env.DB);
+    const result = await service.createPaste({
+      content,
+      contentType,
+      ttl,
+      label,
+    });
+
+    if (c.req.query("u") === "1") {
+      return c.text(`url: ${addr}/${result.slug}`);
+    }
+
+    return c.text(
+      `url: ${addr}/${result.slug}\nid: ${result.id}\nsunset: ${result.sunset}\n`,
+    );
+  } catch (err: any) {
+    if (err.message.includes("Label")) {
+      return c.text(`'${label}' already exists at ${addr}/${label}\n`);
+    }
+    console.error(err);
+    return c.text("Internal Server Error\n", 500);
   }
-  return c.text(row.content as string)
+});
+
+app.get("/:id/:hl?", async (c) => {
+  const service = new PasteService(c.env.DB);
+  const paste = await service.getPaste(c.req.param("id"));
+  if (!paste) return c.notFound();
+
+  const parsed = dataSchema.safeParse(paste);
+  if (!parsed.success) {
+    console.error(parsed.error);
+    return c.text("Internal Server Error\n", 500);
+  }
+
+  if (parsed.data.content_type === "url") {
+    return c.redirect(parsed.data.content);
+  }
+  const data = parsed.data;
+
+  if (data.expires_at < new Date()) {
+    await service.deletePaste(data.id);
+    return c.notFound();
+  }
+
+  c.header("Content-Type", data.content_type);
+  if (data.content_type.startsWith("text/")) {
+    const hl = c.req.param("hl");
+    if (hl) {
+      return c.html(highlight(data.content, hl));
+    }
+    return c.text(data.content);
+  }
+  return c.body(data.content);
 })
-  .put('/:id', async (c) => {
-    const { id } = c.req.param()
-    const secret = c.get('secret')
-    const content = c.get('content')
-    const row = await c.env.DB.prepare('SELECT secret FROM pastes WHERE slug = ?').bind(id).first()
-    if (!row) return c.notFound()
-    if (row.secret !== secret) return c.text('Invalid secret\n', 403)
+  .put("/:id", async (c) => {
+    const { id } = c.req.param();
+    const content = c.get("content");
+    const contentType = c.get("contentType");
 
-    await c.env.DB.prepare('UPDATE pastes SET content = ? WHERE slug = ?').bind(content, id).run()
-    return c.text('updated\n')
+    try {
+      const service = new PasteService(c.env.DB);
+      const { slug } = await service.updatePaste(id, content, contentType);
+      return c.text(`${c.get("addr")}/${slug} updated\n`);
+    } catch (err) {
+      if (err instanceof Error && err.message === "Paste not found") {
+        return c.notFound();
+      }
+      console.error(err);
+      return c.text("Internal Server Error\n", 500);
+    }
   })
-  .delete('/:id', async (c) => {
-    const { id } = c.req.param()
-    const { secret } = await c.req.parseBody()
-    if (typeof secret !== 'string') return c.text('Missing secret\n', 400)
-    const row = await c.env.DB.prepare('SELECT secret FROM pastes WHERE slug = ?').bind(id).first()
-    if (!row) return c.notFound()
-    if (row.secret !== secret) return c.text('Invalid secret\n', 403)
-    await c.env.DB.prepare('DELETE FROM pastes WHERE slug = ?').bind(id).run()
-    return c.text('deleted\n')
-  })
+  .delete("/:id", async (c) => {
+    const { id } = c.req.param();
 
-export const scheduled: ExportedHandlerScheduledHandler<Env> = async (event, env, ctx) => {
-  await env.DB.prepare("DELETE FROM pastes WHERE expires_at IS NOT NULL AND datetime(expires_at) <= datetime('now')").run();
-}
+    try {
+      const service = new PasteService(c.env.DB);
+      await service.deletePaste(id);
+      return c.text("deleted\n");
+    } catch (err) {
+      if (err instanceof Error && err.message === "Paste not found") {
+        return c.notFound();
+      }
+      console.error(err);
+      return c.text("Internal Server Error\n", 500);
+    }
+  });
+
+export const scheduled: ExportedHandlerScheduledHandler<Env> = async (
+  event,
+  env,
+  ctx,
+) => {
+  const service = new PasteService(env.DB);
+  await service.deleteExpired();
+};
 
 export default {
   fetch: app.fetch,
   scheduled,
-}
+};

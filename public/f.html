@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Pastebin</title>
+        <link rel="stylesheet" href="form.css">
+        <script type="module">
+            import {
+                h,
+                render,
+            } from "https://esm.sh/preact@10.19.3";
+            import { useState } from "https://esm.sh/preact@10.19.3/hooks";
+
+            function PastebinForm() {
+                const [content, setContent] = useState("");
+                const [sunset, setSunset] = useState("604800"); // 7 days in seconds
+                const [result, setResult] = useState(null);
+                const [loading, setLoading] = useState(false);
+                const [error, setError] = useState(null);
+                const [pasteShort, setPasteShort] = useState(
+                    "",
+                );
+                const [pasteId, setPasteId] = useState("");
+                const [file, setFile] = useState(null);
+
+                const handleLoad = async () => {
+                    if (!pasteShort) {
+                        setError("Please enter a paste short");
+                        return;
+                    }
+                    setLoading(true);
+                    setError(null);
+
+                    try {
+                        const response = await fetch(
+                            `${window.location.origin}/${pasteShort}`,
+                        );
+                        if (!response.ok) {
+                            throw new Error(
+                                "Failed to load paste",
+                            );
+                        }
+                        const data = await response.text();
+                        setContent(data);
+                    } catch (err) {
+                        setError(err.message);
+                    } finally {
+                        setLoading(false);
+                    }
+                };
+
+                const handleUpdate = async () => {
+                    setLoading(true);
+                    setError(null);
+
+                    try {
+                        const formData = new FormData();
+                        formData.append("c", content);
+
+                        const response = await fetch(
+                            `${window.location.origin}/${pasteId}`,
+                            {
+                                method: "PUT",
+                                body: formData,
+                            },
+                        );
+
+                        if (!response.ok) {
+                            throw new Error(
+                                "Failed to update paste",
+                            );
+                        }
+                        const data = await response.text();
+                        setResult({ message: data });
+                    } catch (err) {
+                        setError(err.message);
+                    } finally {
+                        setLoading(false);
+                    }
+                };
+
+                const handleDelete = async () => {
+                    setLoading(true);
+                    setError(null);
+
+                    try {
+                        const response = await fetch(
+                            `${window.location.origin}/${pasteId}`,
+                            {
+                                method: "DELETE",
+                            },
+                        );
+
+                        if (!response.ok) {
+                            throw new Error(
+                                "Failed to delete paste",
+                            );
+                        }
+                        const data = await response.text();
+                        setResult({ message: data });
+                        setContent("");
+                        setPasteId("");
+                    } catch (err) {
+                        setError(err.message);
+                    } finally {
+                        setLoading(false);
+                    }
+                };
+
+                const handleSubmit = async (e) => {
+                    e.preventDefault();
+                    setLoading(true);
+                    setError(null);
+
+                    try {
+                        const formData = new FormData();
+
+                        // If file is selected, use it instead of textarea content
+                        if (file) {
+                            // Check file size (2MB limit)
+                            if (file.size > 2 * 1024 * 1024) {
+                                throw new Error(
+                                    "File size exceeds 2MB limit",
+                                );
+                            }
+                            formData.append("c", file);
+                        } else {
+                            formData.append("c", content);
+                        }
+
+                        if (sunset) {
+                            formData.append("sunset", sunset);
+                        }
+
+                        const response = await fetch(
+                            window.location.origin,
+                            {
+                                method: "POST",
+                                body: formData,
+                            },
+                        );
+
+                        if (!response.ok) {
+                            throw new Error(
+                                "Failed to create paste",
+                            );
+                        }
+                        const data = await response.text();
+                        const lines = data.split("\n");
+                        const url = lines[0].split(": ")[1];
+                        const id = lines[1].split(": ")[1];
+                        const sunsetTime = lines[2].split(": ")[1];
+
+                        // Update the input fields with the new paste information
+                        setPasteShort(url.split("/").pop());
+                        setPasteId(id);
+
+                        setResult({
+                            url: url,
+                            id: id,
+                            sunset: sunsetTime,
+                        });
+                    } catch (err) {
+                        setError(err.message);
+                    } finally {
+                        setLoading(false);
+                    }
+                };
+
+                return h("div", { className: "container" }, [
+                    h("h1", null, "Pastebin"),
+                    h("div", { className: "load-paste" }, [
+                        h("input", {
+                            type: "text",
+                            value: pasteShort,
+                            onInput: (e) =>
+                                setPasteShort(e.target.value),
+                            placeholder: "Enter paste short",
+                            className: "paste-id-input",
+                        }),
+                        h(
+                            "button",
+                            {
+                                onClick: handleLoad,
+                                disabled: loading,
+                                className: "load-btn",
+                            },
+                            "Load Paste",
+                        ),
+                        h("input", {
+                            type: "text",
+                            value: pasteId,
+                            onInput: (e) =>
+                                setPasteId(e.target.value),
+                            placeholder: "Enter paste ID",
+                            className: "paste-id-input",
+                        }),
+
+                        [
+                            h(
+                                "button",
+                                {
+                                    onClick: handleUpdate,
+                                    disabled: loading ||
+                                        !pasteId,
+                                    className: "update-btn",
+                                },
+                                "Update Paste",
+                            ),
+                            h(
+                                "button",
+                                {
+                                    onClick: handleDelete,
+                                    disabled: loading ||
+                                        !pasteId,
+                                    className: "delete-btn",
+                                },
+                                "Delete Paste",
+                            ),
+                        ],
+                    ]),
+                    h("form", { onSubmit: handleSubmit }, [
+                        h("div", { className: "form-group" }, [
+                            h("textarea", {
+                                value: content,
+                                onInput: (e) =>
+                                    setContent(e.target.value),
+                                placeholder:
+                                    "Enter your text here...",
+                                required: !file, // Only required if no file is selected
+                                rows: 10,
+                            }),
+                        ]),
+                        h("div", { className: "form-group" }, [
+                            h(
+                                "label",
+                                null,
+                                "Or upload a file (max 2MB): ",
+                            ),
+                            h("input", {
+                                type: "file",
+                                onChange: (e) => {
+                                    const selectedFile =
+                                        e.target.files[0];
+                                    setFile(
+                                        selectedFile || null,
+                                    );
+                                },
+                                className: "file-input",
+                            }),
+                            file &&
+                            h(
+                                "p",
+                                { className: "file-name" },
+                                `Selected file: ${file.name}`,
+                            ),
+                        ]),
+                        h("div", { className: "form-group" }, [
+                            h("label", null, "Expires in: "),
+                            h("select", {
+                                value: sunset,
+                                onChange: (e) =>
+                                    setSunset(e.target.value),
+                            }, [
+                                h(
+                                    "option",
+                                    { value: "3600" },
+                                    "1 hour",
+                                ),
+                                h(
+                                    "option",
+                                    { value: "86400" },
+                                    "1 day",
+                                ),
+                                h(
+                                    "option",
+                                    { value: "604800" },
+                                    "1 week",
+                                ),
+                                h("option", {
+                                    value: "2592000",
+                                }, "1 month"),
+                            ]),
+                        ]),
+                        h(
+                            "button",
+                            {
+                                type: "submit",
+                                disabled: loading,
+                                className: "submit-btn",
+                            },
+                            loading
+                                ? "Creating..."
+                                : "Create Paste",
+                        ),
+                    ]),
+                    error &&
+                    h("div", { className: "error" }, error),
+                    result &&
+                    h("div", { className: "result" }, [
+                        result.message
+                            ? h("p", null, result.message)
+                            : [
+                                h("h3", null, "Paste Created!"),
+                                result.url && h("p", null, [
+                                    "URL: ",
+                                    h(
+                                        "a",
+                                        { href: result.url, target: "_blank" },
+                                        result.url,
+                                    ),
+                                ]),
+                                result.id &&
+                                h(
+                                    "p",
+                                    null,
+                                    `ID: ${result.id}`,
+                                ),
+                                result.sunset && h(
+                                    "p",
+                                    null,
+                                    `Expires at: ${
+                                        new Date(result.sunset)
+                                            .toLocaleString()
+                                    }`,
+                                ),
+                            ],
+                    ]),
+                ]);
+            }
+
+            render(
+                h(PastebinForm),
+                document.getElementById("app"),
+            );
+        </script>
+    </head>
+    <body>
+        <div id="app"></div>
+    </body>
+</html>
