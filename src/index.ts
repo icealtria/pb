@@ -1,6 +1,6 @@
 import { Hono } from 'hono/quick'
 import { dataSchema } from './schema'
-import { formVaild } from './middleware'
+import { formValid } from './formValid'
 import { highlight } from './highlight'
 import home from './home'
 import { PasteService } from './service'
@@ -21,7 +21,7 @@ const app = new Hono<{ Bindings: Env; Variables: Variables }>()
 
 app.route('/', home)
 
-app.use('/:id?', formVaild)
+app.use('/:id?', formValid)
 
 app.post('/u', async (c) => {
   const content = c.get('content')
@@ -113,7 +113,7 @@ app.get('/:id/:hl?', async (c) => {
     if (hl) {
       return c.html(highlight(data.content, hl))
     }
-    return c.body(data.content)
+    return c.text(data.content)
   }
   return c.body(data.content)
 })
