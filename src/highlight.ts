@@ -2,15 +2,18 @@ import hljs from "highlight.js";
 import { html, raw } from "hono/html";
 
 function highlightCodeWithLines(code: string, language: string) {
-  const validLanguage = hljs.getLanguage(language) ? language : 'plaintext';
+  const validLanguage = hljs.getLanguage(language) ? language : "plaintext";
   const highlighted = hljs.highlight(code, { language: validLanguage }).value;
   const lines = highlighted.split(/\n/).map((line, i) =>
-    `<a class="line-number" href="#L-${i + 1}">${i + 1}</a><span class="line" id="L-${i + 1}">${line}</span>`
-  ).join('\n');
+    `<a class="line-number" href="#L-${i + 1}">${
+      i + 1
+    }</a><span class="line" id="L-${i + 1}">${line}</span>`
+  ).join("\n");
   return `<pre><code>${lines}</code></pre>`;
 }
 
-const Layout = (children: any) => html`
+const Layout = (children: any) =>
+  html`
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -46,7 +49,7 @@ const Layout = (children: any) => html`
   ${children}
 </body>
 </html>
-`
+`;
 
 export function highlight(code: string, language: string) {
   const highlighted = highlightCodeWithLines(code, language);

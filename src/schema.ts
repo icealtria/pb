@@ -10,16 +10,16 @@ export const dataSchema = z.object({
         return new Uint8Array(val);
       }
       return val;
-    })
+    }),
   ]),
   content_type: z.string(),
   expires_at: z.string().transform((val) => new Date(val)),
-})
+});
 
 export const formSchema = z.object({
   c: z.union([
     z.string(),
-    z.instanceof(File)
+    z.instanceof(File),
   ]),
   sunset: z.string().optional(),
-})
+});
