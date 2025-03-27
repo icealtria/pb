@@ -104,7 +104,7 @@ export class PasteService {
 
     async getPaste(slug: string): Promise<{ content: string | Uint8Array; content_type: string; expires_at: string } | null> {
         return await this.db
-            .prepare('SELECT content, content_type, expires_at FROM pastes WHERE slug = ?')
+            .prepare('SELECT id, slug, content, content_type, expires_at FROM pastes WHERE slug = ?')
             .bind(slug)
             .first()
     }

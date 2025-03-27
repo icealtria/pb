@@ -103,7 +103,7 @@ app.get('/:id/:hl?', async (c) => {
   const data = parsed.data
 
   if (data.expires_at < new Date()) {
-    await service.deletePaste(c.req.param('id'))
+    await service.deletePaste(data.id)
     return c.notFound()
   }
 

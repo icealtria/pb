@@ -1,5 +1,7 @@
 import { z } from "zod";
 export const dataSchema = z.object({
+  id: z.string(),
+  slug: z.string(),
   content: z.union([
     z.string(),
     z.custom<Uint8Array>((data) => data instanceof Uint8Array),
