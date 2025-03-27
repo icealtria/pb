@@ -7,9 +7,9 @@ const MAX_SIZE = 2 * 1024 * 1024
 export const formValid = async (c: Context, next: Next) => {
     if (!['POST', 'PUT'].includes(c.req.method)) return await next()
 
-    const { c: body, ttl } = await c.req.parseBody()
+    const { c: body, sunset } = await c.req.parseBody()
 
-    const parsed = formSchema.safeParse({ c: body, ttl })
+    const parsed = formSchema.safeParse({ c: body, sunset })
     if (!parsed.success) return c.text('Invalid request format.', 400)
 
     const hostname = new URL(c.req.url).hostname
@@ -23,7 +23,7 @@ export const formValid = async (c: Context, next: Next) => {
 
     c.set('content', content)
     c.set('contentType', contentType)
-    if (typeof ttl === 'string' && !isNaN(Number(ttl))) c.set('ttl', Number(ttl))
+    if (typeof sunset === 'string' && !isNaN(Number(sunset))) c.set('sunset', Number(sunset))
 
     await next()
 }

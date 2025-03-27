@@ -14,7 +14,7 @@ type Variables = {
   content: string | Uint8Array
   contentType: string
   hostname: string
-  ttl?: number
+  sunset?: number
 }
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>()
@@ -26,7 +26,7 @@ app.use('/:id?', formValid)
 app.post('/u', async (c) => {
   const content = c.get('content')
   const hostname = c.get('hostname')
-  const ttl = c.get('ttl')
+  const ttl = c.get('sunset')
 
   if (typeof content !== 'string') {
     return c.text('Invalid content format: must be a string\n', 400)
@@ -61,7 +61,7 @@ app.post('/:label?', async (c) => {
   const hostname = c.get('hostname')
   const content = c.get('content')
   const contentType = c.get('contentType')
-  const ttl = c.get('ttl')
+  const ttl = c.get('sunset')
 
   try {
     const service = new PasteService(c.env.DB)
