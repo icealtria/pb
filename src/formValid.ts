@@ -12,8 +12,9 @@ export const formValid = async (c: Context, next: Next) => {
     const parsed = formSchema.safeParse({ c: body, sunset })
     if (!parsed.success) return c.text('Invalid request format.', 400)
 
-    const hostname = new URL(c.req.url).hostname
-    c.set('hostname', hostname)
+    const url = new URL(c.req.url);
+    const addr = url.protocol + '//' + url.hostname + (url.port ? ':' + url.port : '')
+    c.set('addr', addr)
 
     const { content, contentType } = await parseContent(body)
     if (!content) return c.text('Invalid content format.', 400)

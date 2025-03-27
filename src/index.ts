@@ -13,7 +13,7 @@ type Env = {
 type Variables = {
   content: string | Uint8Array
   contentType: string
-  hostname: string
+  addr: string
   sunset?: number
 }
 
@@ -25,7 +25,7 @@ app.use('/:id?', formValid)
 
 app.post('/u', async (c) => {
   const content = c.get('content')
-  const hostname = c.get('hostname')
+  const addr = c.get('addr')
   const ttl = c.get('sunset')
 
   if (typeof content !== 'string') {
@@ -36,7 +36,7 @@ app.post('/u', async (c) => {
     const url = new URL(content)
     const service = new PasteService(c.env.DB)
     const result = await service.createUrlPaste(url.origin, ttl)
-    return c.text(`url: ${hostname}/${result.slug}\nid: ${result.id}\nsunset: ${result.sunset}\n`)
+    return c.text(`url: ${addr}/${result.slug}\nid: ${result.id}\nsunset: ${result.sunset}\n`)
   } catch (err: any) {
     if (err.message.includes('Invalid URL string.')) {
       return c.text('Invalid content format: must be a url\n', 400)
@@ -53,12 +53,12 @@ app.post('/:label?', async (c) => {
     if (!label.startsWith('@') && !label.startsWith('~')) {
       return c.text('Invalid label: must start with @ or ~\n', 400)
     }
-    if (label.length !== 5) {
-      return c.text('Invalid label: must be exactly 5 characters long (including @ or ~)\n', 400)
+    if (label.length < 2) {
+      return c.text('Invalid label: must be at least 2 characters (including @ or ~)\n', 400)
     }
   }
 
-  const hostname = c.get('hostname')
+  const addr = c.get('addr')
   const content = c.get('content')
   const contentType = c.get('contentType')
   const ttl = c.get('sunset')
@@ -73,13 +73,13 @@ app.post('/:label?', async (c) => {
     })
 
     if (c.req.query('u') === '1') {
-      return c.text(`url: https://${hostname}/${result.slug}`)
+      return c.text(`url: ${addr}/${result.slug}`)
     }
 
-    return c.text(`url: https://${hostname}/${result.slug}\nid: ${result.id}\nsunset: ${result.sunset}\n`)
+    return c.text(`url: ${addr}/${result.slug}\nid: ${result.id}\nsunset: ${result.sunset}\n`)
   } catch (err: any) {
     if (err.message.includes('Label')) {
-      return c.text(`'${label}' already exists at https://${hostname}/${label}\n`)
+      return c.text(`'${label}' already exists at ${addr}/${label}\n`)
     }
     console.error(err)
     return c.text('Internal Server Error\n', 500)
@@ -125,7 +125,7 @@ app.get('/:id/:hl?', async (c) => {
     try {
       const service = new PasteService(c.env.DB)
       await service.updatePaste(id, content, contentType)
-      return c.text(`${c.get('hostname')}/${id} updated\n`)
+      return c.text(`${c.get('addr')}/${id} updated\n`)
     } catch (err) {
       if (err instanceof Error && err.message === 'Paste not found') {
         return c.notFound()
