@@ -25,7 +25,9 @@ const Layout = (children: any) =>
     code {
       font-family: 'JetBrains Mono', monospace;
       font-size: 14px;
-      line-height: 1.5;
+    }
+    pre {
+      line-height: 0.8;
     }
     .line-number {
       display: inline-block;
@@ -41,7 +43,6 @@ const Layout = (children: any) =>
     }
     .line:target {
       background-color: rgba(255, 223, 88, 0.3);
-      display: inline-block;
     }
   </style>
 </head>
