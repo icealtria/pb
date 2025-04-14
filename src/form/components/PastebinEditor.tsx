@@ -1,13 +1,13 @@
 import { FunctionComponent } from "preact";
 import { useState, useCallback } from "preact/hooks";
-import { Encrypter, Decrypter } from "age-encryption"
+import { decryptContent } from "../enc";
+import { parseServerResponse, prepareFormData } from "../utils";
 
-type ResultState = { message: string } | { url: string; id: string; sunset: string } | null;
 
 export const PastebinEditor: FunctionComponent = () => {
     const [content, setContent] = useState("");
     const [sunset, setSunset] = useState("604800");
-    const [result, setResult] = useState<ResultState>(null);
+    const [result, setResult] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [pasteShort, setPasteShort] = useState("");
@@ -22,48 +22,26 @@ export const PastebinEditor: FunctionComponent = () => {
         setResult(null);
     };
 
-    const parseServerResponse = (responseText: string) => {
-        const lines = responseText.split("\n");
-        const map = Object.fromEntries(
-            lines.map(line => line.split(": ").map(part => part.trim())).filter(p => p.length === 2)
-        );
-        if (!map.url || !map.id || !map.sunset) {
-            throw new Error("Failed to parse server response. Unexpected format.");
-        }
-        return map;
-    };
-
-    const encryptContent = async (text: string, pass: string) => {
-        try {
-            const e = new Encrypter()
-            e.setPassphrase(pass);
-            const encrypted = await e.encrypt(text);
-            return encrypted;
-        } catch (err) {
-            throw new Error("Encryption failed");
+    const resetState = (clearContent = false) => {
+        clearNotifications();
+        setPasteId("");
+        setCurrentUrl(null);
+        setFile(null);
+        if (clearContent) {
+            setContent("");
+            setPasteShort("");
         }
     };
 
-    const decryptContent = async (text: ArrayBuffer, pass: string) => {
-        try {
-            const u8 = new Uint8Array(text);
-            const d = new Decrypter()
-            d.addPassphrase(pass);
-            const decrypted = await d.decrypt(u8, "text");
-            return decrypted;
-        } catch {
-            throw new Error("Decryption failed");
-        }
+    const handleErrorResponse = async (response: Response, action: string): Promise<never> => {
+        throw new Error(`Failed to ${action} paste (${response.status}): ${await response.text() || 'Server Error'}`);
     };
 
     const handleLoad = async () => {
         if (!pasteShort) return setError("Please enter a paste short code/URL part.");
 
-        setLoading(true);
-        clearNotifications();
-        setPasteId("");
-        setCurrentUrl(null);
-        setFile(null);
+        if (isEncrypted) setLoading(true);
+        resetState();
 
         try {
             const fetchUrl = `${window.location.origin}/${pasteShort}`;
@@ -78,43 +56,39 @@ export const PastebinEditor: FunctionComponent = () => {
                 const loadedContent = await response.text();
                 setContent(loadedContent);
             }
+
             setCurrentUrl(fetchUrl);
-            setResult({ message: "Paste loaded successfully." });
+            setResult("Paste loaded successfully.");
         } catch (err: any) {
             setError(err.message);
             setContent("");
         } finally {
-            setLoading(false);
+            if (isEncrypted) setLoading(false);
         }
     };
+
+
 
     const handleUpdate = async () => {
         if (!pasteId) return setError("No Paste ID available for update. Load or create a paste first.");
 
-        setLoading(true);
+        if (isEncrypted) setLoading(true);
         clearNotifications();
 
         try {
-            const formData = new FormData();
-            if (file) {
-                if (file.size > 2 * 1024 * 1024) throw new Error("File size exceeds 2MB limit.");
-                formData.append("c", file);
-            } else {
-                formData.append("c", content);
-            }
-
+            const formData = await prepareFormData(file, content, password, isEncrypted);
             const response = await fetch(`${window.location.origin}/${pasteId}`, {
                 method: "PUT",
                 body: formData,
             });
-            if (!response.ok) throw new Error(`Failed to update paste (${response.status}): ${await response.text() || 'Server Error'}`);
+            if (!response.ok) await handleErrorResponse(response, "update");
 
-            setResult({ message: await response.text() || "Paste updated successfully." });
+            setResult(await response.text() || "Paste updated successfully.");
             setFile(null);
         } catch (err: any) {
             setError(err.message);
         } finally {
-            setLoading(false);
+            if (isEncrypted) setLoading(false);
         }
     };
 
@@ -122,76 +96,46 @@ export const PastebinEditor: FunctionComponent = () => {
         if (!pasteId) return setError("No Paste ID available for deletion.");
         if (!confirm("Are you sure you want to delete this paste? This cannot be undone.")) return;
 
-        setLoading(true);
         clearNotifications();
 
         try {
             const response = await fetch(`${window.location.origin}/${pasteId}`, { method: "DELETE" });
-            if (!response.ok) throw new Error(`Failed to delete paste (${response.status}): ${await response.text() || 'Server Error'}`);
+            if (!response.ok) await handleErrorResponse(response, "delete");
 
-            setResult({ message: await response.text() || "Paste deleted successfully." });
-            setContent("");
-            setPasteId("");
-            setPasteShort("");
-            setCurrentUrl(null);
-            setFile(null);
+            setResult(await response.text() || "Paste deleted successfully.");
+            resetState(true);
         } catch (err: any) {
             setError(err.message);
-        } finally {
-            setLoading(false);
         }
     };
 
     const handleSubmit = async () => {
-        setLoading(true);
+        if (!file && content.trim() === "") throw new Error("Content cannot be empty. Please type something or upload a file.");
+
+        if (isEncrypted) setLoading(true);
         clearNotifications();
 
         try {
-            if (!file && content.trim() === "") throw new Error("Content cannot be empty. Please type something or upload a file.");
-
-            const formData = new FormData();
-            if (file) {
-                if (file.size > 2 * 1024 * 1024) throw new Error("File size exceeds 2MB limit. Please choose a smaller file.");
-                if (password && isEncrypted) {
-                    // Read file content
-                    const fileContent = await file.arrayBuffer();
-                    const fileText = new TextDecoder().decode(fileContent);
-                    // Encrypt file content
-                    const encryptedContent = await encryptContent(fileText, password);
-                    formData.append("c", new Blob([encryptedContent]), file.type);
-                } else {
-                    formData.append("c", file);
-                }
-            } else {
-                if (password && isEncrypted) {
-                    const contentToSubmit = await encryptContent(content, password);
-                    formData.append("c", new Blob([contentToSubmit]), "text/plain");
-                }
-                else {
-                    formData.append("c", content);
-                }
-            }
-
-            if (sunset) formData.append("sunset", sunset);
-
+            const formData = await prepareFormData(file, content, password, isEncrypted, sunset);
             const response = await fetch(window.location.origin.toString(), {
                 method: "POST",
                 body: formData,
             });
-            if (!response.ok) throw new Error(`Failed to create paste (${response.status}): ${await response.text() || 'Server Error'}`);
+            if (!response.ok) await handleErrorResponse(response, "create");
 
-            const { url, id, sunset: sunsetTimeRaw } = parseServerResponse(await response.text());
+            const serverResponse = parseServerResponse(await response.text());
+            const { url, id } = serverResponse;
 
             setPasteId(id);
             setPasteShort(url.split("/").pop() || "");
             setCurrentUrl(url);
             setFile(null);
 
-            setResult({ url, id, sunset: sunsetTimeRaw });
+            setResult(url ? `Paste created successfully. URL: ${url}` : "Paste created successfully.");
         } catch (err: any) {
             setError(err.message);
         } finally {
-            setLoading(false);
+            if (isEncrypted) setLoading(false);
         }
     };
 
@@ -216,16 +160,11 @@ export const PastebinEditor: FunctionComponent = () => {
 
     const triggerFileInput = () => document.getElementById('file-upload')?.click();
 
-    const formatSunset = (sunsetVal: string) => {
-        const date = new Date(sunsetVal);
-        return !isNaN(date.getTime()) ? date.toLocaleString() : sunsetVal;
-    };
-
     const handleCopyUrl = async () => {
         if (currentUrl) {
             try {
                 await navigator.clipboard.writeText(currentUrl);
-                setResult({ message: "URL copied to clipboard!" });
+                setResult("URL copied to clipboard!");
             } catch (err) {
                 setError("Failed to copy URL to clipboard");
             }
@@ -236,26 +175,26 @@ export const PastebinEditor: FunctionComponent = () => {
         <div className="pastebin-container">
             <header className="pastebin-header">
                 <div className="header-section load-section">
-                    <input type="text" value={pasteShort} onInput={(e) => setPasteShort((e.target as HTMLInputElement).value)} placeholder="Paste short code to load" disabled={loading} className="header-input" />
-                    <button onClick={handleLoad} disabled={loading || !pasteShort} className="header-button">Load</button>
-                    {currentUrl && <button onClick={handleCopyUrl} disabled={loading} className="header-button">Copy URL</button>}
-                    <input type="text" value={pasteId} onInput={(e) => setPasteId((e.target as HTMLInputElement).value)} placeholder="Enter Paste ID" disabled={loading} className="header-input small-input" title="Enter the Paste ID" />
+                    <input type="text" value={pasteShort} onInput={(e) => setPasteShort((e.target as HTMLInputElement).value)} placeholder="Paste short code to load" className="header-input" />
+                    <button onClick={handleLoad} disabled={!pasteShort} className="header-button">Load</button>
+                    {currentUrl && <button onClick={handleCopyUrl} className="header-button">Copy URL</button>}
+                    <input type="text" value={pasteId} onInput={(e) => setPasteId((e.target as HTMLInputElement).value)} placeholder="Enter Paste ID" className="header-input small-input" title="Enter the Paste ID" />
                 </div>
                 <div className="header-section action-section">
-                    <button onClick={handleSubmit} disabled={loading || (!content && !file)} className="header-button primary-action">{loading && !result ? "Creating..." : "Create"}</button>
-                    <button onClick={handleUpdate} disabled={loading || !pasteId} className="header-button">{loading && result?.message?.includes("update") ? "Updating..." : "Update"}</button>
-                    <button onClick={handleDelete} disabled={loading || !pasteId} className="header-button danger-action">{loading && result?.message?.includes("delete") ? "Deleting..." : "Delete"}</button>
+                    <button onClick={handleSubmit} disabled={!content && !file} className="header-button primary-action">Create</button>
+                    <button onClick={handleUpdate} disabled={!pasteId} className="header-button">Update</button>
+                    <button onClick={handleDelete} disabled={!pasteId} className="header-button danger-action">Delete</button>
                 </div>
                 <div className="header-section options-section">
                     <label htmlFor="sunset-select">Expires in:</label>
-                    <select id="sunset-select" value={sunset} onChange={(e) => setSunset((e.target as HTMLSelectElement).value)} disabled={loading} className="header-select">
+                    <select id="sunset-select" value={sunset} onChange={(e) => setSunset((e.target as HTMLSelectElement).value)} className="header-select">
                         <option value="3600">1 hour</option>
                         <option value="86400">1 day</option>
                         <option value="604800">1 week</option>
                         <option value="2592000">1 month</option>
                     </select>
                     <input type="file" id="file-upload" onChange={handleFileChange} style={{ display: 'none' }} accept="*/*" />
-                    <button onClick={triggerFileInput} disabled={loading} className="header-button">{file ? `File: ${file.name}` : "Upload File (Max 2MB)"}</button>
+                    <button onClick={triggerFileInput} className="header-button">{file ? `File: ${file.name}` : "Upload File (Max 2MB)"}</button>
                 </div>
                 <div className="header-section encryption-section">
                     <label>
@@ -276,14 +215,9 @@ export const PastebinEditor: FunctionComponent = () => {
                     )}
                 </div>
                 <div className="header-section status-section">
-                    {loading && <span className="status loading">Working...</span>}
+                    {isEncrypted && loading && <span className="status loading">Working...</span>}
                     {error && <span className="status error">Error: {error}</span>}
-                    {result?.message && <span className="status success">{result.message}</span>}
-                    {result && 'url' in result && (
-                        <span className="status info">
-                            URL: <a href={result.url} target="_blank" rel="noopener noreferrer">{result.url}</a> | ID: {result.id} | Expires: {formatSunset(result.sunset)}
-                        </span>
-                    )}
+                    {result && <span className="status success">{result}</span>}
                     {currentUrl && !result && <span className="status info">Loaded: {currentUrl} {pasteId ? `(ID: ${pasteId})` : '(ID unknown)'}</span>}
                 </div>
             </header>
@@ -294,7 +228,6 @@ export const PastebinEditor: FunctionComponent = () => {
                     onInput={handleTextChange}
                     placeholder="Enter your text here, or use 'Upload File'..."
                     required={!file}
-                    disabled={loading}
                     spellcheck={false}
                 />
             </main>
