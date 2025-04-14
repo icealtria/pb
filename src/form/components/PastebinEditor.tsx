@@ -1,5 +1,6 @@
 import { FunctionComponent } from "preact";
 import { useState, useCallback } from "preact/hooks";
+import { Encrypter, Decrypter } from "age-encryption"
 
 type ResultState = { message: string } | { url: string; id: string; sunset: string } | null;
 
@@ -13,6 +14,8 @@ export const PastebinEditor: FunctionComponent = () => {
     const [pasteId, setPasteId] = useState("");
     const [file, setFile] = useState<File | null>(null);
     const [currentUrl, setCurrentUrl] = useState<string | null>(null);
+    const [password, setPassword] = useState("");
+    const [isEncrypted, setIsEncrypted] = useState(false);
 
     const clearNotifications = () => {
         setError(null);
@@ -30,6 +33,29 @@ export const PastebinEditor: FunctionComponent = () => {
         return map;
     };
 
+    const encryptContent = async (text: string, pass: string) => {
+        try {
+            const e = new Encrypter()
+            e.setPassphrase(pass);
+            const encrypted = await e.encrypt(text);
+            return encrypted;
+        } catch (err) {
+            throw new Error("Encryption failed");
+        }
+    };
+
+    const decryptContent = async (text: ArrayBuffer, pass: string) => {
+        try {
+            const u8 = new Uint8Array(text);
+            const d = new Decrypter()
+            d.addPassphrase(pass);
+            const decrypted = await d.decrypt(u8, "text");
+            return decrypted;
+        } catch {
+            throw new Error("Decryption failed");
+        }
+    };
+
     const handleLoad = async () => {
         if (!pasteShort) return setError("Please enter a paste short code/URL part.");
 
@@ -44,7 +70,14 @@ export const PastebinEditor: FunctionComponent = () => {
             const response = await fetch(fetchUrl);
             if (!response.ok) throw new Error(`Failed to load paste (${response.status}): ${await response.text() || 'Not Found or Server Error'}`);
 
-            setContent(await response.text());
+            if (isEncrypted) {
+                const loadedContent = await response.arrayBuffer();
+                const decryptedContent = await decryptContent(loadedContent, password);
+                setContent(decryptedContent);
+            } else {
+                const loadedContent = await response.text();
+                setContent(loadedContent);
+            }
             setCurrentUrl(fetchUrl);
             setResult({ message: "Paste loaded successfully." });
         } catch (err: any) {
@@ -119,10 +152,26 @@ export const PastebinEditor: FunctionComponent = () => {
             const formData = new FormData();
             if (file) {
                 if (file.size > 2 * 1024 * 1024) throw new Error("File size exceeds 2MB limit. Please choose a smaller file.");
-                formData.append("c", file);
+                if (password && isEncrypted) {
+                    // Read file content
+                    const fileContent = await file.arrayBuffer();
+                    const fileText = new TextDecoder().decode(fileContent);
+                    // Encrypt file content
+                    const encryptedContent = await encryptContent(fileText, password);
+                    formData.append("c", new Blob([encryptedContent]), file.type);
+                } else {
+                    formData.append("c", file);
+                }
             } else {
-                formData.append("c", content);
+                if (password && isEncrypted) {
+                    const contentToSubmit = await encryptContent(content, password);
+                    formData.append("c", new Blob([contentToSubmit]), "text/plain");
+                }
+                else {
+                    formData.append("c", content);
+                }
             }
+
             if (sunset) formData.append("sunset", sunset);
 
             const response = await fetch(window.location.origin.toString(), {
@@ -207,6 +256,24 @@ export const PastebinEditor: FunctionComponent = () => {
                     </select>
                     <input type="file" id="file-upload" onChange={handleFileChange} style={{ display: 'none' }} accept="*/*" />
                     <button onClick={triggerFileInput} disabled={loading} className="header-button">{file ? `File: ${file.name}` : "Upload File (Max 2MB)"}</button>
+                </div>
+                <div className="header-section encryption-section">
+                    <label>
+                        <input
+                            type="checkbox"
+                            checked={isEncrypted}
+                            onChange={(e) => setIsEncrypted((e.target as HTMLInputElement).checked)}
+                        /> Encrypt
+                    </label>
+                    {isEncrypted && (
+                        <input
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword((e.target as HTMLInputElement).value)}
+                            placeholder="Enter encryption password"
+                            className="header-input"
+                        />
+                    )}
                 </div>
                 <div className="header-section status-section">
                     {loading && <span className="status loading">Working...</span>}

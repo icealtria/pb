@@ -4,11 +4,12 @@
     "dev": "wrangler dev src/index.ts",
     "deploy": "wrangler deploy --minify src/index.ts",
     "test-scheduled": "wrangler dev src/index.ts --test-scheduled",
-    "fbuild": "vite build --outDir public/f",
+    "fbuild": "vite build",
     "fdev": "vite dev"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
+    "age-encryption": "^0.2.1",
     "file-type": "^20.4.1",
     "highlight.js": "^11.11.1",
     "hono": "^4.7.6",
