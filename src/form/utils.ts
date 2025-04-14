@@ -19,16 +19,15 @@ export const prepareFormData = async (file: File | null, content: string, passwo
         }
         if (password && isEncrypted) {
             const fileContent = await file.arrayBuffer();
-            const fileText = new TextDecoder().decode(fileContent);
-            const encryptedContent = await encryptContent(fileText, password);
-            formData.append("c", new Blob([encryptedContent]));
+            const encryptedContent = await encryptContent(new Uint8Array(fileContent), password);
+            formData.append("c", new Blob([encryptedContent], { type: file.type }));
         } else {
             formData.append("c", file);
         }
     } else {
         if (password && isEncrypted) {
             const contentToSubmit = await encryptContent(content, password);
-            formData.append("c", new Blob([contentToSubmit]));
+            formData.append("c", new Blob([contentToSubmit], { type: "text/plain" }));
         } else {
             formData.append("c", content);
         }

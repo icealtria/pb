@@ -3,7 +3,6 @@ import { useState, useCallback } from "preact/hooks";
 import { decryptContent } from "../enc";
 import { parseServerResponse, prepareFormData } from "../utils";
 
-
 export const PastebinEditor: FunctionComponent = () => {
     const [content, setContent] = useState("");
     const [sunset, setSunset] = useState("604800");
@@ -16,6 +15,7 @@ export const PastebinEditor: FunctionComponent = () => {
     const [currentUrl, setCurrentUrl] = useState<string | null>(null);
     const [password, setPassword] = useState("");
     const [isEncrypted, setIsEncrypted] = useState(false);
+    const [download, setDownload] = useState<File | null>(null);
 
     const clearNotifications = () => {
         setError(null);
@@ -27,6 +27,7 @@ export const PastebinEditor: FunctionComponent = () => {
         setPasteId("");
         setCurrentUrl(null);
         setFile(null);
+        setDownload(null);
         if (clearContent) {
             setContent("");
             setPasteShort("");
@@ -48,13 +49,28 @@ export const PastebinEditor: FunctionComponent = () => {
             const response = await fetch(fetchUrl);
             if (!response.ok) throw new Error(`Failed to load paste (${response.status}): ${await response.text() || 'Not Found or Server Error'}`);
 
+            const contentType = response.headers.get("Content-Type") || "text/plain";
+
             if (isEncrypted) {
-                const loadedContent = await response.arrayBuffer();
-                const decryptedContent = await decryptContent(loadedContent, password);
-                setContent(decryptedContent);
+                const buffer = await response.arrayBuffer();
+                const decryptedContent = await decryptContent(buffer, password);
+                if (contentType?.startsWith("text/plain")) {
+                    setContent(new TextDecoder().decode(decryptedContent));
+                } else {
+                    const blob = new Blob([decryptedContent]);
+                    setDownload(new File([blob], `${pasteShort}`, { type: contentType }));
+                    setContent(new TextDecoder().decode(decryptedContent));
+                }
+
+                setContent(new TextDecoder().decode(decryptedContent));
             } else {
-                const loadedContent = await response.text();
-                setContent(loadedContent);
+                if (contentType?.startsWith("text/plain")) {
+                    setContent(await response.text());
+                } else {
+                    const blob = await response.blob();
+                    setDownload(new File([blob], `${pasteShort}`, { type: contentType }));
+                    setContent(await blob.text())
+                }
             }
 
             setCurrentUrl(fetchUrl);
@@ -91,6 +107,16 @@ export const PastebinEditor: FunctionComponent = () => {
             if (isEncrypted) setLoading(false);
         }
     };
+
+    const handleDownload = async () => {
+        if (!download) return setError("No file available for download.");
+        const blob = new Blob([download], { type: download.type });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = download.name;
+        link.click();
+    }
 
     const handleDelete = async () => {
         if (!pasteId) return setError("No Paste ID available for deletion.");
@@ -178,6 +204,7 @@ export const PastebinEditor: FunctionComponent = () => {
                     <input type="text" value={pasteShort} onInput={(e) => setPasteShort((e.target as HTMLInputElement).value)} placeholder="Paste short code to load" className="header-input" />
                     <button onClick={handleLoad} disabled={!pasteShort} className="header-button">Load</button>
                     {currentUrl && <button onClick={handleCopyUrl} className="header-button">Copy URL</button>}
+                    {download && <button onClick={handleDownload} className="header-button">Download</button>}
                     <input type="text" value={pasteId} onInput={(e) => setPasteId((e.target as HTMLInputElement).value)} placeholder="Enter Paste ID" className="header-input small-input" title="Enter the Paste ID" />
                 </div>
                 <div className="header-section action-section">
