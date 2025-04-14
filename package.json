@@ -8,12 +8,12 @@
   "dependencies": {
     "file-type": "^20.4.1",
     "highlight.js": "^11.11.1",
-    "hono": "^4.7.5",
+    "hono": "^4.7.6",
     "nanoid": "^5.1.5",
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20250321.0",
-    "wrangler": "^3.114.2"
+    "@cloudflare/workers-types": "^4.20250414.0",
+    "wrangler": "^3.114.5"
   }
 }
