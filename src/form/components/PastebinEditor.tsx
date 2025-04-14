@@ -60,11 +60,15 @@ export const PastebinEditor: FunctionComponent = () => {
 
         setLoading(true);
         clearNotifications();
-        setFile(null);
 
         try {
             const formData = new FormData();
-            formData.append("c", content);
+            if (file) {
+                if (file.size > 2 * 1024 * 1024) throw new Error("File size exceeds 2MB limit.");
+                formData.append("c", file);
+            } else {
+                formData.append("c", content);
+            }
 
             const response = await fetch(`${window.location.origin}/${pasteId}`, {
                 method: "PUT",
@@ -73,6 +77,7 @@ export const PastebinEditor: FunctionComponent = () => {
             if (!response.ok) throw new Error(`Failed to update paste (${response.status}): ${await response.text() || 'Server Error'}`);
 
             setResult({ message: await response.text() || "Paste updated successfully." });
+            setFile(null);
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -189,7 +194,7 @@ export const PastebinEditor: FunctionComponent = () => {
                 </div>
                 <div className="header-section action-section">
                     <button onClick={handleSubmit} disabled={loading || (!content && !file)} className="header-button primary-action">{loading && !result ? "Creating..." : "Create"}</button>
-                    <button onClick={handleUpdate} disabled={loading || !pasteId || !!file} className="header-button" title={file ? "Cannot update with a file selected" : ""}>{loading && result?.message?.includes("update") ? "Updating..." : "Update"}</button>
+                    <button onClick={handleUpdate} disabled={loading || !pasteId} className="header-button">{loading && result?.message?.includes("update") ? "Updating..." : "Update"}</button>
                     <button onClick={handleDelete} disabled={loading || !pasteId} className="header-button danger-action">{loading && result?.message?.includes("delete") ? "Deleting..." : "Delete"}</button>
                 </div>
                 <div className="header-section options-section">
