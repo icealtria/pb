@@ -37,7 +37,7 @@ app.post("/u", async (c) => {
     const service = new PasteService(c.env.DB);
     const result = await service.createUrlPaste(url.origin, ttl);
     return c.text(
-      `url: ${addr}/${result.slug}\nid: ${result.id}\nsunset: ${result.sunset}\n`,
+      `Created successfully\nurl: ${addr}/${result.slug}\nid: ${result.id}\nsunset: ${result.sunset}\n`,
     );
   } catch (err: any) {
     if (err.message.includes("Invalid URL string.")) {

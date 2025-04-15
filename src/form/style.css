@@ -1,10 +1,12 @@
-/* src/style.css */
-html, body, #app {
+html,
+body,
+#app {
     height: 100%;
     margin: 0;
     padding: 0;
     font-family: sans-serif;
-    overflow: hidden; /* Prevent body scrollbars */
+    overflow: hidden;
+    /* Prevent body scrollbars */
     background-color: #f4f4f4;
 }
 
@@ -15,68 +17,150 @@ html, body, #app {
     width: 100vw;
 }
 
-/* Header styles remain the same */
 .pastebin-header {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
+    flex-direction: column;
     padding: 8px 15px;
-    background-color: #333;
-    color: #fff;
-    gap: 15px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    z-index: 10;
+    background-color: white;
+    border-bottom: 1px solid #ccc;
+    gap: 8px;
+}
+
+.main-header {
+    display: flex;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
     flex-shrink: 0;
 }
 
-/* [Copy all the .header-* styles from the previous Monaco example here] */
-.header-section { display: flex; align-items: center; gap: 8px; }
-.header-input, .header-select, .header-button { padding: 6px 10px; border-radius: 4px; border: 1px solid #555; background-color: #444; color: #eee; font-size: 0.9em; }
-.header-input::placeholder { color: #999; }
-.header-button { cursor: pointer; transition: background-color 0.2s ease; }
-.header-button:hover:not(:disabled) { background-color: #555; }
-.header-button:disabled { opacity: 0.5; cursor: not-allowed; }
-.header-button.primary-action { background-color: #007bff; border-color: #007bff; color: white; }
-.header-button.primary-action:hover:not(:disabled) { background-color: #0056b3; }
-.header-button.danger-action { background-color: #dc3545; border-color: #dc3545; color: white; }
-.header-button.danger-action:hover:not(:disabled) { background-color: #c82333; }
-.small-input { max-width: 150px; }
-.status-section { flex-grow: 1; text-align: right; font-size: 0.85em; min-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.status { padding: 3px 8px; border-radius: 3px; margin-left: 10px; }
-.status.loading { background-color: #ffc107; color: #333; }
-.status.error { background-color: #dc3545; color: white; }
-.status.success { background-color: #28a745; color: white; }
-.status.info { background-color: #17a2b8; color: white; }
-.status a { color: #fff; text-decoration: underline; }
+.header-section {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Update input styles */
+.header-input {
+    border: 1px solid #ccc;
+    width: 8em;
+    padding: 6px 10px;
+}
+
+.header-select,
+.header-button {
+    background-color: white;
+    padding: 6px 10px;
+    border: 1px solid #555;
+    font-size: 0.8em;
+}
+
+.header-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.status {
+    padding: 3px 8px;
+    margin-left: 10px;
+}
+
+.status.loading {
+    background-color: #ffc107;
+    color: #333;
+}
+
+.status.error {
+    background-color: #dc3545;
+    color: white;
+}
+
+.status.success {
+    background-color: #28a745;
+    color: white;
+}
+
+.status.info {
+    background-color: #17a2b8;
+    color: white;
+}
+
+.status a {
+    color: #fff;
+    text-decoration: underline;
+}
 
 /* Area containing the textarea */
 .pastebin-editor-area {
-    flex-grow: 1; /* Takes up remaining vertical space */
-    overflow: hidden; /* Prevent its own scrollbars if textarea fits */
-    background-color: #fff; /* White background for textarea */
-    padding: 0; /* No padding needed here */
-    display: flex; /* Use flex to make textarea fill */
+    flex-grow: 1;
+    /* Takes up remaining vertical space */
+    overflow: hidden;
+    /* Prevent its own scrollbars if textarea fits */
+    background-color: #fff;
+    /* White background for textarea */
+    padding: 0;
+    /* No padding needed here */
+    display: flex;
+    flex-direction: column;
+    /* Use flex to make textarea fill */
 }
 
 /* Style the textarea itself */
 .pastebin-textarea {
-    flex-grow: 1; /* Fill the editor area */
-    width: 100%; /* Ensure full width */
-    height: 100%; /* Ensure full height */
-    border: none; /* Remove default border */
-    padding: 10px; /* Add some internal padding */
-    font-family: 'Courier New', Courier, monospace; /* Monospaced font */
-    font-size: 1rem; /* Decent font size */
+    flex-grow: 1;
+    /* Fill the editor area */
+    width: 100%;
+    /* Ensure full width */
+    height: 100%;
+    /* Ensure full height */
+    border: none;
+    /* Remove default border */
+    padding: 10px;
+    /* Add some internal padding */
+    font-family: monospace;
+    /* Monospaced font */
+    font-size: 1rem;
+    /* Decent font size */
     line-height: 1.4;
-    resize: none; /* Disable manual resizing */
-    box-sizing: border-box; /* Include padding in width/height */
-    background-color: #fdfdfd; /* Slightly off-white */
+    resize: none;
+    /* Disable manual resizing */
+    box-sizing: border-box;
+    /* Include padding in width/height */
+    background-color: #fdfdfd;
+    /* Slightly off-white */
     color: #333;
 }
 
 .pastebin-textarea:focus {
-    outline: none; /* Remove focus outline */
+    outline: none;
 }
 
-/* Remove Monaco-specific rule */
-/* .pastebin-editor-area > div { ... } */
+.editor-header {
+    display: flex;
+    align-items: center;
+}
+
+.editor-button {
+    padding: 5px 10px;
+    border: 1px solid #555;
+    background-color: #eee;
+    font-size: 0.9em;
+    opacity: 0.5;
+}
+
+.editor-button.active {
+    background-color: white;
+    opacity: 1;
+}
+
+.file-info {
+    margin: 1rem;
+}
+
+/* Update header styles */
+.header-button {
+    background-color: white;
+    /* Change button background to white */
+    border: 1px solid #ccc;
+    /* Add border */
+}
