@@ -109,6 +109,28 @@ To highlight a specific line, add a line reference to the URL:
 https://p.kururin.cc/jkl632/python#L-2
 ```
 
+## Encrypt and Decrypt a Paste
+
+You can encrypt your paste using the `age` tool before uploading it:
+
+```
+cowsay 2333 | age -p - | curl -F c=@- https://p.kururin.cc
+```
+
+To encrypt a file:
+
+```
+age -p - < file.txt | curl -F c=@- https://p.kururin.cc
+```
+
+To decrypt the paste, use the following command:
+
+```
+curl https://p.kururin.cc/pbksew | age -d - > decrypted.txt
+```
+
+This will save the decrypted content to `decrypted.txt`.
+
 ## Notes
 
 - Pastes are automatically deleted after 7 days by default

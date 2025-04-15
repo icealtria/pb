@@ -114,6 +114,23 @@ const Documentation: FC<{ url: string }> = (props: {
         <code>{props.url}jkl632/python#L-2</code>
       </pre>
     </section>
+
+    <section>
+      <h2>Encrypt and Decrypt a Paste</h2>
+      <p>You can encrypt your paste using the <code>age</code> tool before uploading it:</p>
+      <pre className="code-block">
+        <code>cowsay 2333 | age -p - | curl -F c=@-  {props.url}</code>
+      </pre>
+      <p>Encrypt file</p>
+      <pre className="code-block">
+        <code>{`age -p - < file.txt | curl -F c=@-`} {props.url}</code>
+      </pre>
+      <p>To decrypt the paste, use the following command:</p>
+      <pre className="code-block">
+        <code>curl {props.url}pbksew | age -d - {`>`} decrypted.txt</code>
+      </pre>
+      <p>This will save the decrypted content to <code>decrypted.txt</code>.</p>
+    </section>
   </div>
 );
 
