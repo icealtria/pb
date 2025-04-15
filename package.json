@@ -2,7 +2,7 @@
   "license": "AGPL-3.0",
   "scripts": {
     "dev": "wrangler dev src/index.ts",
-    "deploy": "wrangler deploy --minify src/index.ts",
+    "deploy": "vite build && wrangler deploy --minify src/index.ts",
     "test-scheduled": "wrangler dev src/index.ts --test-scheduled",
     "fbuild": "vite build",
     "fdev": "vite dev"

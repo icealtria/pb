@@ -17,13 +17,16 @@ body,
     width: 100vw;
 }
 
-/* Header styles remain the same */
+/* Update header styles */
 .pastebin-header {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     padding: 8px 15px;
-    background-color: #ccc;
+    background-color: white;
+    /* Change background to white */
+    border: 1px solid #ccc;
+    /* Add border */
     gap: 15px;
     z-index: 10;
     flex-shrink: 0;
@@ -35,18 +38,19 @@ body,
     gap: 4px;
 }
 
-.header-input,
-.header-select,
-.header-button {
+/* Update input styles */
+.header-input {
+    border: 1px solid #ccc;
+    width: 8em;
     padding: 6px 10px;
-    border: 1px solid #555;
-    background-color: #444;
-    color: #eee;
-    font-size: 0.9em;
 }
 
-.header-input {
-    width: 8em;
+.header-select,
+.header-button {
+    background-color: white;
+    padding: 6px 10px;
+    border: 1px solid #555;
+    font-size: 0.9em;
 }
 
 .header-button:disabled {
@@ -149,4 +153,12 @@ body,
 
 .file-info {
     margin: 1rem;
+}
+
+/* Update header styles */
+.header-button {
+    background-color: white;
+    /* Change button background to white */
+    border: 1px solid #ccc;
+    /* Add border */
 }
