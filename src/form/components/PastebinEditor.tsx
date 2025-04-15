@@ -196,43 +196,50 @@ export const PastebinEditor: FunctionComponent = () => {
     return (
         <div className="pastebin-container">
             <header className="pastebin-header">
-                <div>
-                    <button onClick={handleTextChange} className={`editor-button ${!file ? 'active' : ''}`}>Text</button>
-                    <button onClick={triggerFileInput} className={`editor-button ${file ? 'active' : ''}`}>{"File (Max 2MB)"}</button>
+                <div className="main-header">
+                    <div>
+                        <button onClick={handleTextChange} className={`editor-button ${!file ? 'active' : ''}`}>Text</button>
+                        <button onClick={triggerFileInput} className={`editor-button ${file ? 'active' : ''}`}>{"File (Max 2MB)"}</button>
+                    </div>
+                    <div className="header-section">
+                        <input type="text" value={pasteShort} onInput={(e) => setPasteShort((e.target as HTMLInputElement).value)} placeholder="Paste short" className="header-input" autoComplete="off" />
+                        <button onClick={handleLoad} disabled={!pasteShort} className="header-button">Load</button>
+                        <button onClick={handleDownload} disabled={!download} className="header-button">Download</button>
+                        <input type="text" value={pasteId} onInput={(e) => setPasteId((e.target as HTMLInputElement).value)} placeholder="Paste ID" className="header-input" autoComplete="off" />
+                        <input
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword((e.target as HTMLInputElement).value)}
+                            placeholder="password"
+                            className="header-input"
+                            autocomplete="off"
+                        />
+                        <button onClick={handleSubmit} disabled={!content && !file} className="header-button">Create</button>
+                        <button onClick={handleUpdate} disabled={!pasteId} className="header-button">Update</button>
+                        <button onClick={handleDelete} disabled={!pasteId} className="header-button">Delete</button>
+                    </div>
+                    <div className="header-section">
+                        <label htmlFor="sunset-select">Expires in:</label>
+                        <select id="sunset-select" value={sunset} onChange={(e) => setSunset((e.target as HTMLSelectElement).value)} className="header-select">
+                            <option value="3600">1 hour</option>
+                            <option value="86400">1 day</option>
+                            <option value="604800">1 week</option>
+                            <option value="2592000">1 month</option>
+                        </select>
+                    </div>
+                    <div className="header-section">
+                        {password && loading && <span className="status loading">Working...</span>}
+                        {error && <span className="status error">Error: {error}</span>}
+                        {result && <span className="status success">{result}</span>}
+                        {currentUrl && !result && <span className="status info">Loaded: {currentUrl} {pasteId ? `(ID: ${pasteId})` : '(ID unknown)'}</span>}
+                    </div>
                 </div>
-                <div className="header-section">
-                    <input type="text" value={pasteShort} onInput={(e) => setPasteShort((e.target as HTMLInputElement).value)} placeholder="Paste short" className="header-input" autoComplete="off" />
-                    <button onClick={handleLoad} disabled={!pasteShort} className="header-button">Load</button>
-                    <button onClick={handleCopyUrl} disabled={!currentUrl} className="header-button">Copy URL</button>
-                    <button onClick={handleDownload} disabled={!download} className="header-button">Download</button>
-                    <input type="text" value={pasteId} onInput={(e) => setPasteId((e.target as HTMLInputElement).value)} placeholder="Paste ID" className="header-input" autoComplete="off" />
-                    <input
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword((e.target as HTMLInputElement).value)}
-                        placeholder="password"
-                        className="header-input"
-                        autocomplete="off"
-                    />
-                    <button onClick={handleSubmit} disabled={!content && !file} className="header-button">Create</button>
-                    <button onClick={handleUpdate} disabled={!pasteId} className="header-button">Update</button>
-                    <button onClick={handleDelete} disabled={!pasteId} className="header-button">Delete</button>
-                </div>
-                <div className="header-section">
-                    <label htmlFor="sunset-select">Expires in:</label>
-                    <select id="sunset-select" value={sunset} onChange={(e) => setSunset((e.target as HTMLSelectElement).value)} className="header-select">
-                        <option value="3600">1 hour</option>
-                        <option value="86400">1 day</option>
-                        <option value="604800">1 week</option>
-                        <option value="2592000">1 month</option>
-                    </select>
-                </div>
-                <div className="header-section">
-                    {password && loading && <span className="status loading">Working...</span>}
-                    {error && <span className="status error">Error: {error}</span>}
-                    {result && <span className="status success">{result}</span>}
-                    {currentUrl && !result && <span className="status info">Loaded: {currentUrl} {pasteId ? `(ID: ${pasteId})` : '(ID unknown)'}</span>}
-                </div>
+                {currentUrl && (
+                    <div className="header-section">
+                        <button onClick={handleCopyUrl} className="header-button">Copy URL</button>
+                        <span className="status info"><a href={currentUrl}>{currentUrl}</a></span>
+                    </div>
+                )}
             </header>
             <main className="pastebin-editor-area">
                 {file ?
