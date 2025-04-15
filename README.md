@@ -1,6 +1,8 @@
 # pb - A Lightweight Pastebin Service
 
-pb is a lightweight pastebin service built on Cloudflare Workers and D1 database, offering high performance and reliability. It supports text and file sharing with features including:
+pb is a lightweight pastebin service built on Cloudflare Workers and D1
+database, offering high performance and reliability. It supports text and file
+sharing with features including:
 
 - Syntax highlighting for code snippets
 - Custom expiration time (sunset)
@@ -8,13 +10,11 @@ pb is a lightweight pastebin service built on Cloudflare Workers and D1 database
 - Custom labels for pastes
 - Web form for paste and file uploads
 
-# installation
-
-## Create D1 Database
+# Deploy
 
 ```bash
 # Create a new D1 database
-wrangler d1 create pb
+npx wrangler d1 create pb
 
 # The command will output a database_id, copy it to wrangler.toml:
 [[d1_databases]]
@@ -23,17 +23,11 @@ database_name = "pb"
 database_id = "<your-database-id>"
 
 # Initialize database schema
-wrangler d1 execute pb --remote --file=schema.sql
+npx wrangler d1 execute pb --remote --file=schema.sql
 ```
-
-modify `wrangler.toml`
 
 ```
 pnpm install
-pnpm run dev
-```
-
-```
 pnpm run deploy
 ```
 
