@@ -63,13 +63,10 @@ export const PastebinEditor: FunctionComponent = () => {
 
                 setContent(new TextDecoder().decode(decryptedContent));
             } else {
-                if (contentType?.startsWith("text/plain")) {
-                    setContent(await response.text());
-                } else {
-                    const blob = await response.blob();
-                    setDownload(new File([blob], `${pasteShort}`, { type: contentType }));
-                    setContent(await blob.text())
-                }
+                const blob = await response.blob();
+                setDownload(new File([blob], `${pasteShort}`, { type: contentType }));
+                setContent(await blob.text())
+
             }
 
             setCurrentUrl(fetchUrl);
