@@ -14,7 +14,6 @@ export const PastebinEditor: FunctionComponent = () => {
     const [file, setFile] = useState<File | null>(null);
     const [currentUrl, setCurrentUrl] = useState<string | null>(null);
     const [password, setPassword] = useState("");
-    const [isEncrypted, setIsEncrypted] = useState(false);
     const [download, setDownload] = useState<File | null>(null);
 
     const clearNotifications = () => {
@@ -24,11 +23,11 @@ export const PastebinEditor: FunctionComponent = () => {
 
     const resetState = (clearContent = false) => {
         clearNotifications();
-        setPasteId("");
         setCurrentUrl(null);
         setFile(null);
         setDownload(null);
         if (clearContent) {
+            setPasteId("");
             setContent("");
             setPasteShort("");
         }
@@ -41,7 +40,7 @@ export const PastebinEditor: FunctionComponent = () => {
     const handleLoad = async () => {
         if (!pasteShort) return setError("Please enter a paste short code/URL part.");
 
-        if (isEncrypted) setLoading(true);
+        if (password) setLoading(true);
         resetState();
 
         try {
@@ -51,7 +50,7 @@ export const PastebinEditor: FunctionComponent = () => {
 
             const contentType = response.headers.get("Content-Type") || "text/plain";
 
-            if (isEncrypted) {
+            if (password) {
                 const buffer = await response.arrayBuffer();
                 const decryptedContent = await decryptContent(buffer, password);
                 if (contentType?.startsWith("text/plain")) {
@@ -79,7 +78,7 @@ export const PastebinEditor: FunctionComponent = () => {
             setError(err.message);
             setContent("");
         } finally {
-            if (isEncrypted) setLoading(false);
+            if (password) setLoading(false);
         }
     };
 
@@ -88,11 +87,11 @@ export const PastebinEditor: FunctionComponent = () => {
     const handleUpdate = async () => {
         if (!pasteId) return setError("No Paste ID available for update. Load or create a paste first.");
 
-        if (isEncrypted) setLoading(true);
+        if (password) setLoading(true);
         clearNotifications();
 
         try {
-            const formData = await prepareFormData(file, content, password, isEncrypted);
+            const formData = await prepareFormData(file, content, password);
             const response = await fetch(`${window.location.origin}/${pasteId}`, {
                 method: "PUT",
                 body: formData,
@@ -104,7 +103,7 @@ export const PastebinEditor: FunctionComponent = () => {
         } catch (err: any) {
             setError(err.message);
         } finally {
-            if (isEncrypted) setLoading(false);
+            if (password) setLoading(false);
         }
     };
 
@@ -138,11 +137,11 @@ export const PastebinEditor: FunctionComponent = () => {
     const handleSubmit = async () => {
         if (!file && content.trim() === "") throw new Error("Content cannot be empty. Please type something or upload a file.");
 
-        if (isEncrypted) setLoading(true);
+        if (password) setLoading(true);
         clearNotifications();
 
         try {
-            const formData = await prepareFormData(file, content, password, isEncrypted, sunset);
+            const formData = await prepareFormData(file, content, password, sunset);
             const response = await fetch(window.location.origin.toString(), {
                 method: "POST",
                 body: formData,
@@ -161,7 +160,7 @@ export const PastebinEditor: FunctionComponent = () => {
         } catch (err: any) {
             setError(err.message);
         } finally {
-            if (isEncrypted) setLoading(false);
+            if (password) setLoading(false);
         }
     };
 
@@ -200,19 +199,29 @@ export const PastebinEditor: FunctionComponent = () => {
     return (
         <div className="pastebin-container">
             <header className="pastebin-header">
-                <div className="header-section load-section">
-                    <input type="text" value={pasteShort} onInput={(e) => setPasteShort((e.target as HTMLInputElement).value)} placeholder="Paste short code to load" className="header-input" />
+                <div>
+                    <button onClick={handleTextChange} className={`editor-button ${!file ? 'active' : ''}`}>Text</button>
+                    <button onClick={triggerFileInput} className={`editor-button ${file ? 'active' : ''}`}>{"File (Max 2MB)"}</button>
+                </div>
+                <div className="header-section">
+                    <input type="text" value={pasteShort} onInput={(e) => setPasteShort((e.target as HTMLInputElement).value)} placeholder="Paste short" className="header-input" autoComplete="off" />
                     <button onClick={handleLoad} disabled={!pasteShort} className="header-button">Load</button>
-                    {currentUrl && <button onClick={handleCopyUrl} className="header-button">Copy URL</button>}
-                    {download && <button onClick={handleDownload} className="header-button">Download</button>}
-                    <input type="text" value={pasteId} onInput={(e) => setPasteId((e.target as HTMLInputElement).value)} placeholder="Enter Paste ID" className="header-input small-input" title="Enter the Paste ID" />
-                </div>
-                <div className="header-section action-section">
-                    <button onClick={handleSubmit} disabled={!content && !file} className="header-button primary-action">Create</button>
+                    <button onClick={handleCopyUrl} disabled={!currentUrl} className="header-button">Copy URL</button>
+                    <button onClick={handleDownload} disabled={!download} className="header-button">Download</button>
+                    <input type="text" value={pasteId} onInput={(e) => setPasteId((e.target as HTMLInputElement).value)} placeholder="Paste ID" className="header-input" autoComplete="off" />
+                    <input
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword((e.target as HTMLInputElement).value)}
+                        placeholder="password"
+                        className="header-input"
+                        autocomplete="off"
+                    />
+                    <button onClick={handleSubmit} disabled={!content && !file} className="header-button">Create</button>
                     <button onClick={handleUpdate} disabled={!pasteId} className="header-button">Update</button>
-                    <button onClick={handleDelete} disabled={!pasteId} className="header-button danger-action">Delete</button>
+                    <button onClick={handleDelete} disabled={!pasteId} className="header-button">Delete</button>
                 </div>
-                <div className="header-section options-section">
+                <div className="header-section">
                     <label htmlFor="sunset-select">Expires in:</label>
                     <select id="sunset-select" value={sunset} onChange={(e) => setSunset((e.target as HTMLSelectElement).value)} className="header-select">
                         <option value="3600">1 hour</option>
@@ -220,43 +229,34 @@ export const PastebinEditor: FunctionComponent = () => {
                         <option value="604800">1 week</option>
                         <option value="2592000">1 month</option>
                     </select>
-                    <input type="file" id="file-upload" onChange={handleFileChange} style={{ display: 'none' }} accept="*/*" />
-                    <button onClick={triggerFileInput} className="header-button">{file ? `File: ${file.name}` : "Upload File (Max 2MB)"}</button>
                 </div>
-                <div className="header-section encryption-section">
-                    <label>
-                        <input
-                            type="checkbox"
-                            checked={isEncrypted}
-                            onChange={(e) => setIsEncrypted((e.target as HTMLInputElement).checked)}
-                        /> Encrypt
-                    </label>
-                    {isEncrypted && (
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword((e.target as HTMLInputElement).value)}
-                            placeholder="Enter encryption password"
-                            className="header-input"
-                        />
-                    )}
-                </div>
-                <div className="header-section status-section">
-                    {isEncrypted && loading && <span className="status loading">Working...</span>}
+                <div className="header-section">
+                    {password && loading && <span className="status loading">Working...</span>}
                     {error && <span className="status error">Error: {error}</span>}
                     {result && <span className="status success">{result}</span>}
                     {currentUrl && !result && <span className="status info">Loaded: {currentUrl} {pasteId ? `(ID: ${pasteId})` : '(ID unknown)'}</span>}
                 </div>
             </header>
             <main className="pastebin-editor-area">
-                <textarea
-                    className="pastebin-textarea"
-                    value={content}
-                    onInput={handleTextChange}
-                    placeholder="Enter your text here, or use 'Upload File'..."
-                    required={!file}
-                    spellcheck={false}
-                />
+                {file ?
+                    <div>
+                        <div className="file-info">
+                            <div className="file-name">{file.name}</div>
+                            <div className="file-size">{(file.size / 1024).toFixed(2)} KB</div>
+                        </div>
+                    </div>
+                    :
+                    <textarea
+                        className="pastebin-textarea"
+                        value={content}
+                        onInput={handleTextChange}
+                        placeholder="Enter your text here, or use 'Upload File'..."
+                        required={!file}
+                        spellcheck={false}
+                        disabled={file !== null}
+                    />
+                }
+                <input type="file" id="file-upload" onChange={handleFileChange} style={{ display: 'none' }} accept="*/*" />
             </main>
         </div>
     );

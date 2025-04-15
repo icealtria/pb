@@ -11,13 +11,13 @@ export const parseServerResponse = (responseText: string) => {
     return map;
 };
 
-export const prepareFormData = async (file: File | null, content: string, password: string, isEncrypted: boolean, sunset?: string) => {
+export const prepareFormData = async (file: File | null, content: string, password: string, sunset?: string) => {
     const formData = new FormData();
     if (file) {
         if (file.size > 2 * 1024 * 1024) {
             throw new Error("File size exceeds 2MB limit. Please choose a smaller file.");
         }
-        if (password && isEncrypted) {
+        if (password) {
             const fileContent = await file.arrayBuffer();
             const encryptedContent = await encryptContent(new Uint8Array(fileContent), password);
             formData.append("c", new Blob([encryptedContent], { type: file.type }));
@@ -25,7 +25,7 @@ export const prepareFormData = async (file: File | null, content: string, passwo
             formData.append("c", file);
         }
     } else {
-        if (password && isEncrypted) {
+        if (password) {
             const contentToSubmit = await encryptContent(content, password);
             formData.append("c", new Blob([contentToSubmit], { type: "text/plain" }));
         } else {
