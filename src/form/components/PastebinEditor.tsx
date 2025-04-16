@@ -202,19 +202,10 @@ export const PastebinEditor: FunctionComponent = () => {
                         <button onClick={triggerFileInput} className={`editor-button ${file ? 'active' : ''}`}>{"File (Max 2MB)"}</button>
                     </div>
                     <div className="header-section">
-                        <input type="text" value={pasteShort} onInput={(e) => setPasteShort((e.target as HTMLInputElement).value)} placeholder="Paste short" className="header-input" autoComplete="off" />
+                        <input type="text" value={pasteShort} onInput={(e) => setPasteShort((e.target as HTMLInputElement).value)} placeholder="Paste short co​de" className="header-input" autoComplete="off" />
                         <button onClick={handleLoad} disabled={!pasteShort} className="header-button">Load</button>
                         <button onClick={handleDownload} disabled={!download} className="header-button">Download</button>
                         <input type="text" value={pasteId} onInput={(e) => setPasteId((e.target as HTMLInputElement).value)} placeholder="Paste ID" className="header-input" autoComplete="off" />
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword((e.target as HTMLInputElement).value)}
-                            placeholder="password"
-                            className="header-input"
-                            autocomplete="off"
-                        />
-                        <button onClick={handleSubmit} disabled={!content && !file} className="header-button">Create</button>
                         <button onClick={handleUpdate} disabled={!pasteId} className="header-button">Update</button>
                         <button onClick={handleDelete} disabled={!pasteId} className="header-button">Delete</button>
                     </div>
@@ -233,6 +224,15 @@ export const PastebinEditor: FunctionComponent = () => {
                         {result && <span className="status success">{result}</span>}
                         {currentUrl && !result && <span className="status info">Loaded: {currentUrl} {pasteId ? `(ID: ${pasteId})` : '(ID unknown)'}</span>}
                     </div>
+                    <input
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword((e.target as HTMLInputElement).value)}
+                            placeholder="password"
+                            className="header-input ml-auto"
+                            autocomplete="off"
+                        />
+                    <button onClick={handleSubmit} disabled={!content && !file} className="header-button create-button">Create</button>
                 </div>
                 {currentUrl && (
                     <div className="header-section">

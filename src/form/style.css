@@ -40,7 +40,6 @@ body,
     gap: 4px;
 }
 
-/* Update input styles */
 .header-input {
     border: 1px solid #ccc;
     width: 8em;
@@ -97,15 +96,12 @@ body,
     overflow: hidden;
     /* Prevent its own scrollbars if textarea fits */
     background-color: #fff;
-    /* White background for textarea */
     padding: 0;
-    /* No padding needed here */
     display: flex;
     flex-direction: column;
     /* Use flex to make textarea fill */
 }
 
-/* Style the textarea itself */
 .pastebin-textarea {
     flex-grow: 1;
     /* Fill the editor area */
@@ -157,10 +153,17 @@ body,
     margin: 1rem;
 }
 
-/* Update header styles */
 .header-button {
     background-color: white;
-    /* Change button background to white */
     border: 1px solid #ccc;
-    /* Add border */
+}
+
+.ml-auto {
+    margin-left: auto;
+}
+
+.create-button {
+    background-color: #2c3e50;
+    color: white;
+    border: 1px solid #2c3e50;
 }
