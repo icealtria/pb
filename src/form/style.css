@@ -20,7 +20,7 @@ body,
 .pastebin-header {
     display: flex;
     flex-direction: column;
-    padding: 8px 15px;
+    padding: 8px;
     background-color: white;
     border-bottom: 1px solid #ccc;
     gap: 8px;
