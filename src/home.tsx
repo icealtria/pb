@@ -1,10 +1,16 @@
 import { Hono } from "hono";
 import { FC } from "hono/jsx";
 
-const Documentation: FC<{ url: string }> = (props: {
-  url: string;
-}) => (
+const Documentation: FC<{ url: string }> = (props: { url: string }) => (
   <div className="container">
+    <a
+      href="https://github.com/icealtria/pb.git"
+      className="github-link"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      GitHub
+    </a>
     <h1>Pastebin Documentation</h1>
 
     <section>
@@ -13,7 +19,10 @@ const Documentation: FC<{ url: string }> = (props: {
         <li>Pastes are automatically deleted after 7 days by default</li>
         <li>Maximum size: 2MB (due to D1 limit)</li>
         <li>All data may be erased without notifications</li>
-        <li>A <a href={`/f`}>HTML form</a> is also provided for convenience paste and file-uploads from web browsers.</li>
+        <li>
+          A <a href={`/f`}>HTML form</a> is also provided for convenience paste
+          and file-uploads from web browsers.
+        </li>
       </ul>
     </section>
 
@@ -38,7 +47,9 @@ const Documentation: FC<{ url: string }> = (props: {
         parameter:
       </p>
       <pre className="code-block">
-        <code>echo "Custom expiry" | curl -F c=@- -F sunset=1440 {props.url}</code>
+        <code>
+          echo "Custom expiry" | curl -F c=@- -F sunset=1440 {props.url}
+        </code>
       </pre>
       <ul>
         <li>The sunset value is in seconds</li>
@@ -50,11 +61,15 @@ const Documentation: FC<{ url: string }> = (props: {
     <section>
       <h2>Update a Paste</h2>
       <pre className="code-block">
-        <code>echo "Updated content" | curl -F c=@- {props.url}abcd123456789</code>
+        <code>
+          echo "Updated content" | curl -F c=@- {props.url}abcd123456789
+        </code>
       </pre>
       <div className="response-example">
         <h3>Response:</h3>
-        <pre><code>{props.url}xyz789 updated</code></pre>
+        <pre>
+          <code>{props.url}xyz789 updated</code>
+        </pre>
       </div>
     </section>
 
@@ -65,7 +80,9 @@ const Documentation: FC<{ url: string }> = (props: {
       </pre>
       <div className="response-example">
         <h3>Response:</h3>
-        <pre><code>deleted</code></pre>
+        <pre>
+          <code>deleted</code>
+        </pre>
       </div>
     </section>
 
@@ -117,19 +134,28 @@ const Documentation: FC<{ url: string }> = (props: {
 
     <section>
       <h2>Encrypt and Decrypt a Paste</h2>
-      <p>You can encrypt your paste using the <code>age</code> tool before uploading it:</p>
+      <p>
+        You can encrypt your paste using the <code>age</code> tool before
+        uploading it:Ï
+      </p>
       <pre className="code-block">
-        <code>cowsay 2333 | age -p - | curl -F c=@-  {props.url}</code>
+        <code>cowsay 2333 | age -p - | curl -F c=@- {props.url}</code>
       </pre>
       <p>Encrypt file</p>
       <pre className="code-block">
-        <code>{`age -p - < file.txt | curl -F c=@-`} {props.url}</code>
+        <code>
+          {`age -p - < file.txt | curl -F c=@-`} {props.url}
+        </code>
       </pre>
       <p>To decrypt the paste, use the following command:</p>
       <pre className="code-block">
-        <code>curl {props.url}pbksew | age -d - {`>`} decrypted.txt</code>
+        <code>
+          curl {props.url}pbksew | age -d - {`>`} decrypted.txt
+        </code>
       </pre>
-      <p>This will save the decrypted content to <code>decrypted.txt</code>.</p>
+      <p>
+        This will save the decrypted content to <code>decrypted.txt</code>.
+      </p>
     </section>
   </div>
 );
@@ -152,6 +178,12 @@ home.get("/", (c) => {
               color: #333;
               margin: 0;
               padding: 0;
+              position: relative;
+            }
+            .github-link {
+              position: absolute;
+              top: 1rem;
+              right: 1rem;
             }
             .container {
               max-width: 800px;
