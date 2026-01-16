@@ -94,8 +94,12 @@ app.post("/:label?", async (c) => {
 });
 
 app.get("/:id/:hl?", async (c) => {
+  const id = c.req.param("id");
+
+  if (!id) return c.notFound();
+
   const service = new PasteService(c.env.DB);
-  const paste = await service.getPaste(c.req.param("id"));
+  const paste = await service.getPaste(id);
   if (!paste) return c.notFound();
 
   const parsed = dataSchema.safeParse(paste);

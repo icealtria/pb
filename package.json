@@ -17,12 +17,12 @@
     "preact": "^10.26.9",
     "preact-iso": "^2.9.2",
     "preact-render-to-string": "^6.5.13",
-    "zod": "^3.25.64"
+    "zod": "^4.3.5"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250614.0",
     "@preact/preset-vite": "^2.10.1",
     "vite": "^6.3.5",
-    "wrangler": "^4.20.0"
+    "wrangler": "^4.59.2"
   }
 }
