@@ -8,7 +8,6 @@
     "fdev": "vite dev"
   },
   "dependencies": {
-    "@monaco-editor/react": "^4.7.0",
     "age-encryption": "^0.2.3",
     "file-type": "^20.5.0",
     "highlight.js": "^11.11.1",
